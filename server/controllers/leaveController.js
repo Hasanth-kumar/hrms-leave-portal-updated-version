@@ -18,6 +18,9 @@ const sendEmailNotification = async (leave, action) => {
     console.log(`Dates: ${leave.startDate} to ${leave.endDate}`);
     console.log(`Working Days: ${leave.workingDays}`);
     console.log(`Status: ${leave.status}`);
+    if (leave.documents && leave.documents.length > 0) {
+        console.log(`Documents: ${leave.documents.length} files attached`);
+    }
 };
 
 // Get all leaves (admin/manager only)
@@ -134,7 +137,19 @@ const applyLeave = async (req, res) => {
             });
         }
 
-        const { startDate, endDate, leaveType, reason, documents, isHalfDay } = req.body;
+        let { startDate, endDate, leaveType, reason, isHalfDay } = req.body;
+        
+        // Handle file uploads if present
+        let documents = [];
+        if (req.files && req.files.length > 0) {
+            documents = req.files.map(file => ({
+                fileName: file.originalname,
+                filePath: file.path,
+                fileSize: file.size,
+                mimeType: file.mimetype,
+                uploadedAt: new Date()
+            }));
+        }
 
         // Validate required fields
         if (!startDate || !endDate || !leaveType || !reason) {
@@ -153,7 +168,8 @@ const applyLeave = async (req, res) => {
             startDate,
             endDate,
             leaveType,
-            documents
+            documents,
+            reason
         }, systemSettings);
 
         if (!validation.valid) {
@@ -190,7 +206,7 @@ const applyLeave = async (req, res) => {
             reason,
             workingDays,
             isHalfDay: isHalfDay || false,
-            documents: documents || [],
+            documents: documents,
             lopDays
         });
 
@@ -216,41 +232,100 @@ const applyLeave = async (req, res) => {
     }
 };
 
-// Validate leave request
+// Enhanced validation function for leave requests
 const validateLeaveRequest = async (user, leaveData, systemSettings) => {
+    const { startDate, endDate, leaveType, documents, reason } = leaveData;
+    
     // Check for overlapping leaves
-    const hasOverlap = await checkOverlap(user._id, leaveData.startDate, leaveData.endDate);
+    const hasOverlap = await checkOverlap(user._id, startDate, endDate);
     if (hasOverlap) {
         return { valid: false, message: 'Leave dates overlap with existing leave request' };
     }
     
     // Check if applying on weekend or holiday
-    if (leaveData.leaveType !== 'wfh') {
-        const startDate = new Date(leaveData.startDate);
+    if (leaveType !== 'wfh') {
+        const startDateObj = new Date(startDate);
         
-        if (isWeekend(startDate) || await isHoliday(startDate)) {
+        if (isWeekend(startDateObj) || await isHoliday(startDateObj)) {
             return { valid: false, message: 'Cannot apply leave starting on weekend or holiday' };
         }
     }
     
-    // Check advance notice for casual and vacation leave
+    // Check advance notice for different leave types
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const requestDate = new Date(leaveData.startDate);
+    const requestDate = new Date(startDate);
     const daysDiff = daysDifference(today, requestDate);
     
-    if (leaveData.leaveType === 'casual' || leaveData.leaveType === 'vacation') {
-        const requiredNotice = systemSettings.advanceNotice[leaveData.leaveType];
+    if (leaveType === 'casual' || leaveType === 'vacation') {
+        const requiredNotice = systemSettings.advanceNotice[leaveType];
         if (daysDiff < requiredNotice) {
             return { 
                 valid: false, 
-                message: `${leaveData.leaveType} leave must be applied ${requiredNotice} days in advance` 
+                message: `${leaveType} leave must be applied ${requiredNotice} days in advance` 
+            };
+        }
+    }
+    
+    // Enhanced Academic Leave Validation
+    if (leaveType === 'academic') {
+        const academicSettings = systemSettings.academicLeaveSettings;
+        
+        // Check advance notice requirement
+        const requiredNotice = academicSettings.minAdvanceNotice || 14;
+        if (daysDiff < requiredNotice) {
+            return { 
+                valid: false, 
+                message: `Academic leave must be applied at least ${requiredNotice} days in advance` 
+            };
+        }
+        
+        // Check if documents are required and provided
+        if (academicSettings.requireDocuments && (!documents || documents.length === 0)) {
+            return { 
+                valid: false, 
+                message: 'Academic leave requires supporting documents. Please upload relevant documents.' 
+            };
+        }
+        
+        // Check maximum documents limit
+        if (documents && documents.length > academicSettings.maxDocuments) {
+            return { 
+                valid: false, 
+                message: `Maximum ${academicSettings.maxDocuments} documents allowed for academic leave` 
+            };
+        }
+        
+        // Check consecutive days limit
+        const leaveDays = await calculateWorkingDays(startDate, endDate);
+        if (leaveDays > academicSettings.maxConsecutiveDays) {
+            return { 
+                valid: false, 
+                message: `Academic leave cannot exceed ${academicSettings.maxConsecutiveDays} consecutive working days` 
+            };
+        }
+        
+        // Check reason length for academic leave
+        if (!reason || reason.trim().length < 50) {
+            return { 
+                valid: false, 
+                message: 'Academic leave requires a detailed reason (minimum 50 characters)' 
+            };
+        }
+        
+        // Additional validation: Check if user has sufficient academic leave balance
+        const currentUser = await User.findById(user._id);
+        const academicBalance = currentUser.leaveBalance.academic || 0;
+        if (leaveDays > academicBalance) {
+            return { 
+                valid: false, 
+                message: `Insufficient academic leave balance. You have ${academicBalance} days available.` 
             };
         }
     }
     
     // Check sick leave same-day cutoff
-    if (leaveData.leaveType === 'sick' && daysDiff === 0) {
+    if (leaveType === 'sick' && daysDiff === 0) {
         const now = new Date();
         const [cutoffHour, cutoffMinute] = systemSettings.sickLeaveCutoffTime.split(':');
         const cutoff = new Date();
@@ -262,11 +337,6 @@ const validateLeaveRequest = async (user, leaveData, systemSettings) => {
                 message: `Same-day sick leave must be applied before ${systemSettings.sickLeaveCutoffTime}` 
             };
         }
-    }
-    
-    // Academic leave must have documents
-    if (leaveData.leaveType === 'academic' && (!leaveData.documents || leaveData.documents.length === 0)) {
-        return { valid: false, message: 'Academic leave requires supporting documents' };
     }
     
     return { valid: true };
@@ -317,6 +387,20 @@ const updateLeaveStatus = async (req, res) => {
                 success: false, 
                 message: 'Leave request has already been processed' 
             });
+        }
+
+        // Special handling for Academic Leave approval
+        if (leave.leaveType === 'academic') {
+            const config = await Config.getConfig();
+            const academicSettings = config.systemSettings.academicLeaveSettings;
+            
+            // Check if HR approval is required and current user is HR/Admin
+            if (academicSettings.requireHRApproval && currentUser.role !== 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Academic leave requires HR/Admin approval'
+                });
+            }
         }
 
         // Update leave status
@@ -627,6 +711,77 @@ const getHolidays = async (req, res) => {
     }
 };
 
+// Download document (for academic leave)
+const downloadDocument = async (req, res) => {
+    try {
+        const currentUser = req.user;
+        const { leaveId, documentIndex } = req.params;
+        
+        if (!currentUser) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Not authenticated' 
+            });
+        }
+
+        // Find the leave request
+        const leave = await Leave.findById(leaveId).populate('userId');
+        if (!leave) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Leave request not found' 
+            });
+        }
+
+        // Check if user has permission to view documents
+        const canView = leave.userId._id.toString() === currentUser._id.toString() || 
+                       currentUser.role === 'manager' || 
+                       currentUser.role === 'admin';
+        
+        if (!canView) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. You cannot view these documents.'
+            });
+        }
+
+        // Check if document exists
+        if (!leave.documents || !leave.documents[documentIndex]) {
+            return res.status(404).json({
+                success: false,
+                message: 'Document not found'
+            });
+        }
+
+        const document = leave.documents[documentIndex];
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Check if file exists
+        if (!fs.existsSync(document.filePath)) {
+            return res.status(404).json({
+                success: false,
+                message: 'Document file not found on server'
+            });
+        }
+
+        // Set appropriate headers
+        res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+        res.setHeader('Content-Type', document.mimeType);
+        
+        // Stream the file
+        const fileStream = fs.createReadStream(document.filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error downloading document',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getAllLeaves,
     getMyLeaves,
@@ -637,5 +792,6 @@ module.exports = {
     getLeaveBalance,
     markWFH,
     addCompOff,
-    getHolidays
+    getHolidays,
+    downloadDocument
 }; 

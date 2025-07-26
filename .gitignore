@@ -109,4 +109,7 @@ pids
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Uploads directory (contains user uploaded documents)
+uploads/ 

@@ -20,6 +20,10 @@ const configSchema = new mongoose.Schema({
             vacation: {
                 type: Number,
                 default: 20
+            },
+            academic: {
+                type: Number,
+                default: 15 // Annual academic leave quota
             }
         },
         intern: {
@@ -34,6 +38,10 @@ const configSchema = new mongoose.Schema({
             vacation: {
                 type: Number,
                 default: 0
+            },
+            academic: {
+                type: Number,
+                default: 10 // Reduced quota for interns
             }
         }
     },
@@ -50,6 +58,10 @@ const configSchema = new mongoose.Schema({
             vacation: {
                 type: Number,
                 default: 1.67
+            },
+            academic: {
+                type: Number,
+                default: 1.25 // Monthly accrual for academic leave
             }
         },
         intern: {
@@ -64,6 +76,10 @@ const configSchema = new mongoose.Schema({
             vacation: {
                 type: Number,
                 default: 0
+            },
+            academic: {
+                type: Number,
+                default: 0.83 // Monthly accrual for academic leave
             }
         }
     },
@@ -84,6 +100,10 @@ const configSchema = new mongoose.Schema({
             vacation: {
                 type: Number,
                 default: 7
+            },
+            academic: {
+                type: Number,
+                default: 14 // Academic leave requires 14 days advance notice
             }
         },
         sickLeaveCutoffTime: {
@@ -97,6 +117,40 @@ const configSchema = new mongoose.Schema({
         workingDays: {
             type: [Number],
             default: [1, 2, 3, 4, 5] // Monday to Friday
+        },
+        academicLeaveSettings: {
+            requireDocuments: {
+                type: Boolean,
+                default: true
+            },
+            maxDocuments: {
+                type: Number,
+                default: 5
+            },
+            allowedFileTypes: {
+                type: [String],
+                default: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+            },
+            maxFileSize: {
+                type: Number,
+                default: 5242880 // 5MB in bytes
+            },
+            minAdvanceNotice: {
+                type: Number,
+                default: 14 // Minimum days in advance
+            },
+            maxConsecutiveDays: {
+                type: Number,
+                default: 30 // Maximum consecutive academic leave days
+            },
+            requireManagerApproval: {
+                type: Boolean,
+                default: true
+            },
+            requireHRApproval: {
+                type: Boolean,
+                default: true // Academic leave requires HR approval too
+            }
         }
     },
     lastAccrualRun: {

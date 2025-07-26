@@ -35,7 +35,7 @@
         <!-- Leave Balance Summary -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
             <h2 class="text-lg font-semibold mb-4">Your Leave Balance</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="balanceSummary">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4" id="balanceSummary">
                 <!-- Balance will be loaded here -->
             </div>
         </div>
@@ -44,7 +44,7 @@
         <div class="bg-white rounded-lg shadow p-8">
             <h2 class="text-xl font-semibold mb-6">Leave Application Form</h2>
 
-            <form id="leaveForm" class="space-y-6">
+            <form id="leaveForm" class="space-y-6" enctype="multipart/form-data">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Start Date -->
                     <div>
@@ -112,6 +112,26 @@
 
                 <!-- Document Upload (for Academic Leave) -->
                 <div id="documentSection" class="hidden">
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+                        <div class="flex">
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-yellow-800">
+                                    Academic Leave Requirements
+                                </h3>
+                                <div class="mt-2 text-sm text-yellow-700">
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        <li>Must be applied at least 14 days in advance</li>
+                                        <li>Supporting documents are required</li>
+                                        <li>Maximum 5 documents allowed</li>
+                                        <li>File size limit: 5MB per file</li>
+                                        <li>Allowed formats: PDF, JPG, PNG, DOC, DOCX</li>
+                                        <li>Detailed reason (minimum 50 characters) required</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <label for="documents" class="block text-sm font-medium text-gray-700 mb-2">
                         Supporting Documents <span class="text-red-500">*</span>
                     </label>
@@ -120,10 +140,17 @@
                         id="documents" 
                         name="documents" 
                         multiple
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        onchange="handleFileSelection()"
                     >
-                    <p class="mt-1 text-sm text-gray-600">Upload supporting documents (PDF, JPG, PNG)</p>
+                    <p class="mt-1 text-sm text-gray-600">Upload supporting documents (PDF, JPG, PNG, DOC, DOCX)</p>
+                    
+                    <!-- File Preview -->
+                    <div id="filePreview" class="mt-3 hidden">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Selected Files:</h4>
+                        <div id="fileList" class="space-y-2"></div>
+                    </div>
                 </div>
 
                 <!-- Reason -->
@@ -138,7 +165,9 @@
                         required 
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Please provide a detailed reason for your leave request"
+                        oninput="checkReasonLength()"
                     ></textarea>
+                    <p id="reasonCounter" class="mt-1 text-sm text-gray-500">0 characters</p>
                 </div>
 
                 <!-- Working Days Calculation -->
@@ -159,7 +188,8 @@
                     </a>
                     <button 
                         type="submit" 
-                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                        id="submitBtn"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         Submit Application
                     </button>
@@ -196,7 +226,12 @@
         // Load leave balance
         async function loadLeaveBalance() {
             try {
-                const response = await fetch('/api/leaves/balance');
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/leaves/balance', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -211,7 +246,12 @@
         // Load holidays
         async function loadHolidays() {
             try {
-                const response = await fetch('/api/leaves/holidays');
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/leaves/holidays', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -231,7 +271,8 @@
                 { key: 'sick', label: 'Sick', color: 'red' },
                 { key: 'casual', label: 'Casual', color: 'blue' },
                 { key: 'vacation', label: 'Vacation', color: 'green' },
-                { key: 'compOff', label: 'Comp Off', color: 'purple' }
+                { key: 'academic', label: 'Academic', color: 'purple' },
+                { key: 'compOff', label: 'Comp Off', color: 'orange' }
             ];
             
             types.forEach(type => {
@@ -250,14 +291,23 @@
             const leaveType = document.getElementById('leaveType').value;
             const documentSection = document.getElementById('documentSection');
             const leaveTypeInfo = document.getElementById('leaveTypeInfo');
+            const reasonField = document.getElementById('reason');
             
-            // Show/hide document section
+            // Show/hide document section and update requirements
             if (leaveType === 'academic') {
                 documentSection.classList.remove('hidden');
                 document.getElementById('documents').setAttribute('required', 'required');
+                reasonField.setAttribute('minlength', '50');
+                reasonField.setAttribute('placeholder', 'Please provide a detailed reason for your academic leave (minimum 50 characters). Include course details, institution name, duration, and how this relates to your professional development.');
             } else {
                 documentSection.classList.add('hidden');
                 document.getElementById('documents').removeAttribute('required');
+                reasonField.removeAttribute('minlength');
+                reasonField.setAttribute('placeholder', 'Please provide a detailed reason for your leave request');
+                
+                // Clear file selection
+                document.getElementById('documents').value = '';
+                document.getElementById('filePreview').classList.add('hidden');
             }
             
             // Show leave type info
@@ -265,7 +315,7 @@
                 sick: 'Can be applied same day before 11:00 AM',
                 casual: 'Must be applied 7 days in advance',
                 vacation: 'Must be applied 7 days in advance',
-                academic: 'Requires supporting documents',
+                academic: 'Must be applied 14 days in advance. Requires supporting documents and detailed reason.',
                 compOff: 'Use your earned compensatory off days'
             };
             
@@ -274,6 +324,74 @@
             // Recalculate working days if dates are selected
             if (document.getElementById('startDate').value && document.getElementById('endDate').value) {
                 calculateWorkingDays();
+            }
+            
+            // Update reason counter
+            checkReasonLength();
+        }
+
+        // Handle file selection for academic leave
+        function handleFileSelection() {
+            const files = document.getElementById('documents').files;
+            const preview = document.getElementById('filePreview');
+            const fileList = document.getElementById('fileList');
+            
+            if (files.length > 0) {
+                preview.classList.remove('hidden');
+                fileList.innerHTML = '';
+                
+                // Validate file count
+                if (files.length > 5) {
+                    alert('Maximum 5 files allowed. Please select fewer files.');
+                    document.getElementById('documents').value = '';
+                    preview.classList.add('hidden');
+                    return;
+                }
+                
+                Array.from(files).forEach((file, index) => {
+                    // Validate file size
+                    if (file.size > 5 * 1024 * 1024) { // 5MB
+                        alert(`File "${file.name}" is too large. Maximum size is 5MB.`);
+                        document.getElementById('documents').value = '';
+                        preview.classList.add('hidden');
+                        return;
+                    }
+                    
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'flex items-center justify-between bg-gray-50 p-2 rounded';
+                    fileDiv.innerHTML = `
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-600">${file.name}</span>
+                            <span class="ml-2 text-xs text-gray-400">(${(file.size / 1024).toFixed(1)} KB)</span>
+                        </div>
+                        <span class="text-xs text-green-600">✓</span>
+                    `;
+                    fileList.appendChild(fileDiv);
+                });
+            } else {
+                preview.classList.add('hidden');
+            }
+        }
+
+        // Check reason length for academic leave
+        function checkReasonLength() {
+            const reason = document.getElementById('reason').value;
+            const counter = document.getElementById('reasonCounter');
+            const leaveType = document.getElementById('leaveType').value;
+            
+            counter.textContent = `${reason.length} characters`;
+            
+            if (leaveType === 'academic') {
+                if (reason.length < 50) {
+                    counter.className = 'mt-1 text-sm text-red-500';
+                    counter.textContent = `${reason.length}/50 characters (minimum 50 required for academic leave)`;
+                } else {
+                    counter.className = 'mt-1 text-sm text-green-600';
+                    counter.textContent = `${reason.length} characters ✓`;
+                }
+            } else {
+                counter.className = 'mt-1 text-sm text-gray-500';
+                counter.textContent = `${reason.length} characters`;
             }
         }
 
@@ -348,35 +466,59 @@
             const user = await checkAuth();
             if (!user) return;
 
-            const formData = {
-                startDate: document.getElementById('startDate').value,
-                endDate: document.getElementById('endDate').value,
-                leaveType: document.getElementById('leaveType').value,
-                reason: document.getElementById('reason').value,
-                isHalfDay: document.getElementById('isHalfDay').checked
-            };
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
 
-            // Handle document upload for academic leave
-            if (formData.leaveType === 'academic') {
+            const leaveType = document.getElementById('leaveType').value;
+            const reason = document.getElementById('reason').value;
+
+            // Validate academic leave specific requirements
+            if (leaveType === 'academic') {
+                if (reason.length < 50) {
+                    alert('Academic leave requires a detailed reason with at least 50 characters');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                    return;
+                }
+
                 const files = document.getElementById('documents').files;
                 if (files.length === 0) {
                     alert('Please upload supporting documents for academic leave');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
                     return;
                 }
-                // In a real application, you would upload files to a server
-                formData.documents = Array.from(files).map(f => f.name);
+            }
+
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append('startDate', document.getElementById('startDate').value);
+            formData.append('endDate', document.getElementById('endDate').value);
+            formData.append('leaveType', leaveType);
+            formData.append('reason', reason);
+            formData.append('isHalfDay', document.getElementById('isHalfDay').checked);
+
+            // Add documents if it's academic leave
+            if (leaveType === 'academic') {
+                const files = document.getElementById('documents').files;
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('documents', files[i]);
+                }
             }
 
             const messageDiv = document.getElementById('message');
             messageDiv.classList.add('hidden');
 
             try {
+                const token = localStorage.getItem('token');
                 const response = await fetch('/api/leaves/apply', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify(formData)
+                    body: formData
                 });
 
                 const data = await response.json();
@@ -384,31 +526,37 @@
                 messageDiv.classList.remove('hidden');
                 
                 if (data.success) {
-                    messageDiv.className = 'mt-4 text-center text-green-600';
+                    messageDiv.className = 'mt-4 text-center text-green-600 bg-green-50 p-4 rounded-md';
                     messageDiv.textContent = data.message;
                     
                     // Reset form
                     this.reset();
                     document.getElementById('workingDaysInfo').classList.add('hidden');
+                    document.getElementById('documentSection').classList.add('hidden');
+                    document.getElementById('filePreview').classList.add('hidden');
                     
                     // Redirect to dashboard after 2 seconds
                     setTimeout(() => {
                         window.location.href = '/dashboard.html';
                     }, 2000);
                 } else {
-                    messageDiv.className = 'mt-4 text-center text-red-600';
+                    messageDiv.className = 'mt-4 text-center text-red-600 bg-red-50 p-4 rounded-md';
                     messageDiv.textContent = data.message;
                 }
             } catch (error) {
                 messageDiv.classList.remove('hidden');
-                messageDiv.className = 'mt-4 text-center text-red-600';
+                messageDiv.className = 'mt-4 text-center text-red-600 bg-red-50 p-4 rounded-md';
                 messageDiv.textContent = 'An error occurred. Please try again.';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         });
 
         // Logout function
         function logout() {
             localStorage.removeItem('user');
+            localStorage.removeItem('token');
             window.location.href = '/';
         }
 

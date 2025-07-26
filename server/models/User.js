@@ -51,6 +51,11 @@ const userSchema = new mongoose.Schema({
             default: 0,
             min: 0
         },
+        academic: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
         compOff: {
             type: Number,
             default: 0,
@@ -112,17 +117,20 @@ userSchema.methods.initializeLeaveBalance = function() {
         this.leaveBalance.sick = Math.min(monthsWorked * 0.5, 6);
         this.leaveBalance.casual = Math.min(monthsWorked * 0.5, 6);
         this.leaveBalance.vacation = 0;
+        this.leaveBalance.academic = Math.min(monthsWorked * 0.83, 10);
     } else {
         // For regular employees, give full quota if joined before current year
         if (joiningDate.getFullYear() < currentDate.getFullYear()) {
             this.leaveBalance.sick = 12;
             this.leaveBalance.casual = 8;
             this.leaveBalance.vacation = 20;
+            this.leaveBalance.academic = 15;
         } else {
             // Prorate for current year joiners
             this.leaveBalance.sick = Math.round((monthsWorked / 12) * 12);
             this.leaveBalance.casual = Math.round((monthsWorked / 12) * 8);
             this.leaveBalance.vacation = Math.round((monthsWorked / 12) * 20);
+            this.leaveBalance.academic = Math.round((monthsWorked / 12) * 15);
         }
     }
 };
