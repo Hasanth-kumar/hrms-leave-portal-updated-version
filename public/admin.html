@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS Leave Portal - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <h1 class="text-2xl font-bold text-gray-800">Admin Panel</h1>
+                <div class="flex items-center space-x-4">
+                    <a href="/dashboard.html" class="text-blue-600 hover:text-blue-800">Dashboard</a>
+                    <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Tab Navigation -->
+        <div class="bg-white rounded-lg shadow mb-6">
+            <nav class="flex space-x-8 px-6 border-b">
+                <button onclick="showTab('quotas')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">
+                    Leave Quotas
+                </button>
+                <button onclick="showTab('holidays')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700">
+                    Holiday Calendar
+                </button>
+                <button onclick="showTab('users')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700">
+                    User Management
+                </button>
+                <button onclick="showTab('settings')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700">
+                    System Settings
+                </button>
+                <button onclick="showTab('accrual')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700">
+                    Accrual Management
+                </button>
+            </nav>
+        </div>
+
+        <!-- Leave Quotas Tab -->
+        <div id="quotas-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-6">Leave Quota Configuration</h2>
+                
+                <!-- Regular Employees -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-medium mb-4">Regular Employees (Annual Quotas)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sick Leave (days)</label>
+                            <input type="number" id="regular-sick" class="w-full px-3 py-2 border rounded-lg" value="12">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Casual Leave (days)</label>
+                            <input type="number" id="regular-casual" class="w-full px-3 py-2 border rounded-lg" value="8">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Vacation Leave (days)</label>
+                            <input type="number" id="regular-vacation" class="w-full px-3 py-2 border rounded-lg" value="20">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interns/Trainees -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-medium mb-4">Interns/Trainees (Annual Quotas)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sick Leave (days)</label>
+                            <input type="number" id="intern-sick" class="w-full px-3 py-2 border rounded-lg" value="6">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Casual Leave (days)</label>
+                            <input type="number" id="intern-casual" class="w-full px-3 py-2 border rounded-lg" value="6">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Vacation Leave (days)</label>
+                            <input type="number" id="intern-vacation" class="w-full px-3 py-2 border rounded-lg" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="saveQuotas()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                    Save Quotas
+                </button>
+            </div>
+        </div>
+
+        <!-- Holiday Calendar Tab -->
+        <div id="holidays-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Holiday Calendar Management</h2>
+                    <button onclick="showAddHolidayModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Add Holiday
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Holiday Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Day</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holidaysTableBody" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management Tab -->
+        <div id="users-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">User Management</h2>
+                    <button onclick="showAddUserModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        Add User
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joining Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Settings Tab -->
+        <div id="settings-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-6">System Settings</h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Maximum LOP Days per Year</label>
+                        <input type="number" id="maxLOPDays" class="w-full md:w-64 px-3 py-2 border rounded-lg" value="30">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Carry Forward Cap (days)</label>
+                        <input type="number" id="carryForwardCap" class="w-full md:w-64 px-3 py-2 border rounded-lg" value="15">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Casual Leave Advance Notice (days)</label>
+                        <input type="number" id="casualAdvanceNotice" class="w-full md:w-64 px-3 py-2 border rounded-lg" value="7">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Vacation Leave Advance Notice (days)</label>
+                        <input type="number" id="vacationAdvanceNotice" class="w-full md:w-64 px-3 py-2 border rounded-lg" value="7">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Sick Leave Same-Day Cutoff Time</label>
+                        <input type="time" id="sickLeaveCutoffTime" class="w-full md:w-64 px-3 py-2 border rounded-lg" value="11:00">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">HR Email for Notifications</label>
+                        <input type="email" id="hrEmail" class="w-full md:w-64 px-3 py-2 border rounded-lg" value="leaves@domain.com">
+                    </div>
+                </div>
+
+                <button onclick="saveSettings()" class="mt-6 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                    Save Settings
+                </button>
+            </div>
+        </div>
+
+        <!-- Accrual Management Tab -->
+        <div id="accrual-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-6">Monthly Accrual Management</h2>
+                
+                <div class="mb-8">
+                    <h3 class="text-lg font-medium mb-4">Accrual Status</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-2">Last Accrual Run: <span id="lastAccrualRun" class="font-medium">Never</span></p>
+                        <p class="text-sm text-gray-600 mb-2">Next Scheduled Run: <span id="nextAccrualRun" class="font-medium">1st of next month</span></p>
+                        <p class="text-sm text-gray-600">Accrual Mode: <span id="accrualMode" class="font-medium">Manual</span></p>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-lg font-medium mb-4">Monthly Accrual Rates</h3>
+                    
+                    <!-- Regular Employees -->
+                    <div class="mb-6">
+                        <h4 class="text-md font-medium mb-3">Regular Employees (per month)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Sick Leave</label>
+                                <input type="number" id="accrual-regular-sick" step="0.1" class="w-full px-3 py-2 border rounded-lg" value="1">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Casual Leave</label>
+                                <input type="number" id="accrual-regular-casual" step="0.1" class="w-full px-3 py-2 border rounded-lg" value="0.67">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Vacation Leave</label>
+                                <input type="number" id="accrual-regular-vacation" step="0.1" class="w-full px-3 py-2 border rounded-lg" value="1.67">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interns -->
+                    <div class="mb-6">
+                        <h4 class="text-md font-medium mb-3">Interns/Trainees (per month)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Sick Leave</label>
+                                <input type="number" id="accrual-intern-sick" step="0.1" class="w-full px-3 py-2 border rounded-lg" value="0.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Casual Leave</label>
+                                <input type="number" id="accrual-intern-casual" step="0.1" class="w-full px-3 py-2 border rounded-lg" value="0.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Vacation Leave</label>
+                                <input type="number" id="accrual-intern-vacation" step="0.1" class="w-full px-3 py-2 border rounded-lg" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex space-x-4">
+                    <button onclick="runAccrual()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                        Run Monthly Accrual Now
+                    </button>
+                    <button onclick="saveAccrualRates()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                        Save Accrual Rates
+                    </button>
+                </div>
+
+                <!-- Accrual Log -->
+                <div class="mt-8">
+                    <h3 class="text-lg font-medium mb-4">Recent Accrual Log</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employees Processed</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accrualLogBody" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">No accrual logs available</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Holiday Modal -->
+    <div id="addHolidayModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Add Holiday</h3>
+            <form id="addHolidayForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Date</label>
+                    <input type="date" id="holidayDate" required class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Holiday Name</label>
+                    <input type="text" id="holidayName" required class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddHolidayModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Add User</h3>
+            <form id="addUserForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                    <input type="text" id="userName" required class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                    <input type="email" id="userEmail" required class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Role</label>
+                    <select id="userRole" required class="w-full px-3 py-2 border rounded-lg">
+                        <option value="employee">Employee</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                        <option value="intern">Intern</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Employee Type</label>
+                    <select id="userType" required class="w-full px-3 py-2 border rounded-lg">
+                        <option value="regular">Regular</option>
+                        <option value="intern">Intern/Trainee</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Joining Date</label>
+                    <input type="date" id="userJoiningDate" required class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddUserModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Admin Panel JavaScript - Inline to avoid separate file
+        
+        let currentUser = null;
+
+        // Check authentication and admin access
+        async function checkAdminAuth() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = '/';
+                return false;
+            }
+            
+            currentUser = JSON.parse(userStr);
+            if (currentUser.role !== 'admin') {
+                alert('Access denied. Admin privileges required.');
+                window.location.href = '/dashboard.html';
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Tab navigation
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active state from all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            
+            // Set active state on clicked tab button
+            event.target.classList.remove('border-transparent', 'text-gray-500');
+            event.target.classList.add('border-blue-500', 'text-blue-600');
+            
+            // Load tab-specific data
+            switch(tabName) {
+                case 'quotas':
+                    loadQuotas();
+                    break;
+                case 'holidays':
+                    loadHolidays();
+                    break;
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'settings':
+                    loadSettings();
+                    break;
+                case 'accrual':
+                    loadAccrualInfo();
+                    break;
+            }
+        }
+
+        // Load leave quotas
+        async function loadQuotas() {
+            try {
+                const response = await fetch('/api/admin/quotas');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Regular employee quotas
+                    document.getElementById('regular-sick').value = data.quotas.regular.sick;
+                    document.getElementById('regular-casual').value = data.quotas.regular.casual;
+                    document.getElementById('regular-vacation').value = data.quotas.regular.vacation;
+                    
+                    // Intern quotas
+                    document.getElementById('intern-sick').value = data.quotas.intern.sick;
+                    document.getElementById('intern-casual').value = data.quotas.intern.casual;
+                    document.getElementById('intern-vacation').value = data.quotas.intern.vacation;
+                }
+            } catch (error) {
+                console.error('Error loading quotas:', error);
+            }
+        }
+
+        // Save leave quotas
+        async function saveQuotas() {
+            const quotas = {
+                regular: {
+                    sick: parseInt(document.getElementById('regular-sick').value),
+                    casual: parseInt(document.getElementById('regular-casual').value),
+                    vacation: parseInt(document.getElementById('regular-vacation').value)
+                },
+                intern: {
+                    sick: parseInt(document.getElementById('intern-sick').value),
+                    casual: parseInt(document.getElementById('intern-casual').value),
+                    vacation: parseInt(document.getElementById('intern-vacation').value)
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/admin/quotas', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(quotas)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Leave quotas updated successfully!');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error saving quotas');
+            }
+        }
+
+        // Load holidays
+        async function loadHolidays() {
+            try {
+                const response = await fetch('/api/leaves/holidays');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayHolidays(data.holidays);
+                }
+            } catch (error) {
+                console.error('Error loading holidays:', error);
+            }
+        }
+
+        // Display holidays in table
+        function displayHolidays(holidays) {
+            const tbody = document.getElementById('holidaysTableBody');
+            tbody.innerHTML = '';
+            
+            holidays.forEach(holiday => {
+                const date = new Date(holiday.date);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(holiday.date)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${holiday.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${dayName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <button onclick="deleteHoliday('${holiday.date}')" class="text-red-600 hover:text-red-900">
+                            Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Add holiday modal functions
+        function showAddHolidayModal() {
+            document.getElementById('addHolidayModal').classList.remove('hidden');
+        }
+
+        function closeAddHolidayModal() {
+            document.getElementById('addHolidayModal').classList.add('hidden');
+            document.getElementById('addHolidayForm').reset();
+        }
+
+        // Add holiday form submission
+        document.getElementById('addHolidayForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const holidayData = {
+                date: document.getElementById('holidayDate').value,
+                name: document.getElementById('holidayName').value
+            };
+            
+            try {
+                const response = await fetch('/api/admin/holidays', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(holidayData)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Holiday added successfully!');
+                    closeAddHolidayModal();
+                    loadHolidays();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error adding holiday');
+            }
+        });
+
+        // Delete holiday
+        async function deleteHoliday(date) {
+            if (!confirm('Are you sure you want to delete this holiday?')) return;
+            
+            try {
+                const response = await fetch(`/api/admin/holidays/${date}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    loadHolidays();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error deleting holiday');
+            }
+        }
+
+        // Load users
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayUsers(data.users);
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Display users in table
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+            
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.email}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.role}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(user.joiningDate)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <button onclick="editUser(${user.id})" class="text-blue-600 hover:text-blue-900 mr-3">
+                            Edit
+                        </button>
+                        <button onclick="deleteUser(${user.id})" class="text-red-600 hover:text-red-900">
+                            Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Add user modal functions
+        function showAddUserModal() {
+            document.getElementById('addUserModal').classList.remove('hidden');
+            document.getElementById('userJoiningDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').classList.add('hidden');
+            document.getElementById('addUserForm').reset();
+        }
+
+        // Add user form submission
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userData = {
+                name: document.getElementById('userName').value,
+                email: document.getElementById('userEmail').value,
+                role: document.getElementById('userRole').value,
+                type: document.getElementById('userType').value,
+                joiningDate: document.getElementById('userJoiningDate').value
+            };
+            
+            try {
+                const response = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('User added successfully!');
+                    closeAddUserModal();
+                    loadUsers();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error adding user');
+            }
+        });
+
+        // Delete user
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    loadUsers();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error deleting user');
+            }
+        }
+
+        // Load system settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/admin/settings');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('maxLOPDays').value = data.settings.maxLOPDays;
+                    document.getElementById('carryForwardCap').value = data.settings.carryForwardCap;
+                    document.getElementById('casualAdvanceNotice').value = data.settings.advanceNotice.casual;
+                    document.getElementById('vacationAdvanceNotice').value = data.settings.advanceNotice.vacation;
+                    document.getElementById('sickLeaveCutoffTime').value = data.settings.sickLeaveCutoffTime;
+                    document.getElementById('hrEmail').value = data.settings.hrEmail || 'leaves@domain.com';
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Save system settings
+        async function saveSettings() {
+            const settings = {
+                maxLOPDays: parseInt(document.getElementById('maxLOPDays').value),
+                carryForwardCap: parseInt(document.getElementById('carryForwardCap').value),
+                advanceNotice: {
+                    casual: parseInt(document.getElementById('casualAdvanceNotice').value),
+                    vacation: parseInt(document.getElementById('vacationAdvanceNotice').value)
+                },
+                sickLeaveCutoffTime: document.getElementById('sickLeaveCutoffTime').value,
+                hrEmail: document.getElementById('hrEmail').value
+            };
+            
+            try {
+                const response = await fetch('/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Settings updated successfully!');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error saving settings');
+            }
+        }
+
+        // Load accrual information
+        async function loadAccrualInfo() {
+            try {
+                const response = await fetch('/api/admin/accrual/info');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update accrual status
+                    document.getElementById('lastAccrualRun').textContent = data.lastRun ? formatDate(data.lastRun) : 'Never';
+                    document.getElementById('nextAccrualRun').textContent = data.nextRun || '1st of next month';
+                    document.getElementById('accrualMode').textContent = data.mode || 'Manual';
+                    
+                    // Update accrual rates
+                    if (data.rates) {
+                        document.getElementById('accrual-regular-sick').value = data.rates.regular.sick;
+                        document.getElementById('accrual-regular-casual').value = data.rates.regular.casual;
+                        document.getElementById('accrual-regular-vacation').value = data.rates.regular.vacation;
+                        document.getElementById('accrual-intern-sick').value = data.rates.intern.sick;
+                        document.getElementById('accrual-intern-casual').value = data.rates.intern.casual;
+                        document.getElementById('accrual-intern-vacation').value = data.rates.intern.vacation;
+                    }
+                    
+                    // Display accrual log
+                    if (data.log && data.log.length > 0) {
+                        displayAccrualLog(data.log);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading accrual info:', error);
+            }
+        }
+
+        // Display accrual log
+        function displayAccrualLog(logs) {
+            const tbody = document.getElementById('accrualLogBody');
+            tbody.innerHTML = '';
+            
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(log.date)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.employeesProcessed}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            ${log.status}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Run monthly accrual
+        async function runAccrual() {
+            if (!confirm('Are you sure you want to run the monthly accrual process? This will credit leaves to all eligible employees.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/accrual/run', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert(`Monthly accrual completed successfully!\n\nEmployees processed: ${data.processed}\nTotal leaves credited: ${data.totalCredited}`);
+                    loadAccrualInfo();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error running accrual process');
+            }
+        }
+
+        // Save accrual rates
+        async function saveAccrualRates() {
+            const rates = {
+                regular: {
+                    sick: parseFloat(document.getElementById('accrual-regular-sick').value),
+                    casual: parseFloat(document.getElementById('accrual-regular-casual').value),
+                    vacation: parseFloat(document.getElementById('accrual-regular-vacation').value)
+                },
+                intern: {
+                    sick: parseFloat(document.getElementById('accrual-intern-sick').value),
+                    casual: parseFloat(document.getElementById('accrual-intern-casual').value),
+                    vacation: parseFloat(document.getElementById('accrual-intern-vacation').value)
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/admin/accrual/rates', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rates)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Accrual rates updated successfully!');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error saving accrual rates');
+            }
+        }
+
+        // Format date helper
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (await checkAdminAuth()) {
+                loadQuotas(); // Load the first tab by default
+            }
+        });
+    </script>
+</body>
+</html> 

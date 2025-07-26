@@ -1,0 +1,25 @@
+{
+  "name": "hrms-leave-app",
+  "version": "1.0.0",
+  "description": "HRMS Leave Management Portal - Modular Prototype",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test-db": "node test-db.js",
+    "seed": "node test-db.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

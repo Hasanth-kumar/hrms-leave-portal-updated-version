@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS Leave Portal - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <h1 class="text-2xl font-bold text-gray-800">HRMS Leave Portal</h1>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-600">
+                        Welcome, <span id="userName" class="font-semibold"></span> 
+                        (<span id="userRole" class="capitalize"></span>)
+                    </span>
+                    <button 
+                        onclick="logout()"
+                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
+                    >
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Leave Balance Section -->
+        <div id="leaveBalanceSection" class="mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Leave Balance</h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="leaveBalanceCards">
+                    <!-- Balance cards will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Employee Actions -->
+            <div id="employeeActions" class="hidden">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+                    <div class="space-y-3">
+                        <a 
+                            href="/apply.html" 
+                            class="block w-full bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 transition text-center"
+                        >
+                            Apply for Leave
+                        </a>
+                        <button 
+                            onclick="showWFHModal()"
+                            class="w-full bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 transition"
+                        >
+                            Mark Work From Home
+                        </button>
+                        <button 
+                            onclick="showCompOffModal()"
+                            class="w-full bg-purple-600 text-white px-4 py-3 rounded hover:bg-purple-700 transition"
+                        >
+                            Add Compensatory Off
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holidays Calendar -->
+            <div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold mb-4">Upcoming Holidays</h2>
+                    <div id="holidaysList" class="space-y-2 max-h-48 overflow-y-auto">
+                        <!-- Holidays will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manager/Admin Actions -->
+        <div id="managerActions" class="mb-8 hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Manager Actions</h2>
+                <div class="space-x-4">
+                    <button 
+                        onclick="loadPendingLeaves()"
+                        class="bg-yellow-600 text-white px-6 py-3 rounded hover:bg-yellow-700 transition"
+                    >
+                        View Pending Approvals
+                    </button>
+                    <button 
+                        onclick="loadAllLeaves()"
+                        class="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 transition"
+                    >
+                        View All Leaves
+                    </button>
+                    <a 
+                        id="adminPanelLink"
+                        href="/admin.html" 
+                        class="hidden bg-purple-600 text-white px-6 py-3 rounded hover:bg-purple-700 transition inline-block"
+                    >
+                        Admin Panel
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave Requests Table -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b">
+                <h2 class="text-xl font-semibold" id="tableTitle">My Leave Requests</h2>
+            </div>
+            <div class="p-6">
+                <div id="loadingMessage" class="text-center py-4 text-gray-500">Loading leave requests...</div>
+                <div id="noDataMessage" class="text-center py-4 text-gray-500 hidden">No leave requests found.</div>
+                <div class="overflow-x-auto">
+                    <table id="leaveTable" class="min-w-full hidden">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaveTableBody" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- WFH Modal -->
+    <div id="wfhModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Mark Work From Home</h3>
+            <form id="wfhForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Date</label>
+                    <input type="date" id="wfhDate" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Reason</label>
+                    <textarea id="wfhReason" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" rows="3"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeWFHModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Comp Off Modal -->
+    <div id="compOffModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Add Compensatory Off</h3>
+            <form id="compOffForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Number of Days</label>
+                    <input type="number" id="compOffDays" min="0.5" max="5" step="0.5" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Reason</label>
+                    <textarea id="compOffReason" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" rows="3" placeholder="e.g., Worked on weekend for project deadline"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeCompOffModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        let currentUser = null;
+
+        // Initialize dashboard
+        async function initDashboard() {
+            currentUser = checkAuth();
+            if (!currentUser) {
+                return; // checkAuth handles redirect
+            }
+
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userRole').textContent = currentUser.role;
+
+            // Load leave balance
+            await loadLeaveBalance();
+            
+            // Load holidays
+            await loadHolidays();
+
+            // Show appropriate actions based on role
+            if (currentUser.role === 'employee' || currentUser.role === 'intern') {
+                document.getElementById('employeeActions').classList.remove('hidden');
+                loadMyLeaves();
+            } else {
+                document.getElementById('managerActions').classList.remove('hidden');
+                if (currentUser.role === 'admin') {
+                    document.getElementById('adminPanelLink').classList.remove('hidden');
+                }
+                loadPendingLeaves();
+            }
+        }
+
+        // Load leave balance
+        async function loadLeaveBalance() {
+            try {
+                const data = await api.leaves.getBalance();
+                if (data && data.success) {
+                    displayLeaveBalance(data.balance);
+                }
+            } catch (error) {
+                console.error('Error loading leave balance:', error);
+            }
+        }
+
+        // Display leave balance
+        function displayLeaveBalance(balance) {
+            const container = document.getElementById('leaveBalanceCards');
+            container.innerHTML = '';
+
+            const leaveTypes = [
+                { key: 'sick', label: 'Sick', color: 'red' },
+                { key: 'casual', label: 'Casual', color: 'blue' },
+                { key: 'vacation', label: 'Vacation', color: 'green' },
+                { key: 'compOff', label: 'Comp Off', color: 'purple' },
+                { key: 'lop', label: 'LOP', color: 'gray' },
+                { key: 'carryForward', label: 'Carry Fwd', color: 'indigo' }
+            ];
+
+            leaveTypes.forEach(type => {
+                if (balance[type.key] !== undefined) {
+                    const card = document.createElement('div');
+                    card.className = `bg-${type.color}-50 p-4 rounded-lg text-center`;
+                    card.innerHTML = `
+                        <div class="text-2xl font-bold text-${type.color}-600">${balance[type.key] || 0}</div>
+                        <div class="text-sm text-${type.color}-700">${type.label}</div>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+        }
+
+        // Load holidays
+        async function loadHolidays() {
+            try {
+                const data = await api.leaves.getHolidays();
+                if (data && data.success) {
+                    displayHolidays(data.holidays);
+                }
+            } catch (error) {
+                console.error('Error loading holidays:', error);
+            }
+        }
+
+        // Display holidays
+        function displayHolidays(holidays) {
+            const container = document.getElementById('holidaysList');
+            container.innerHTML = '';
+
+            const today = new Date();
+            const upcomingHolidays = holidays.filter(h => new Date(h.date) >= today);
+
+            if (upcomingHolidays.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No upcoming holidays</p>';
+                return;
+            }
+
+            upcomingHolidays.forEach(holiday => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-2 bg-gray-50 rounded';
+                item.innerHTML = `
+                    <span class="font-medium">${holiday.name}</span>
+                    <span class="text-sm text-gray-600">${formatDate(holiday.date)}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Load employee's own leaves
+        async function loadMyLeaves() {
+            document.getElementById('tableTitle').textContent = 'My Leave Requests';
+            document.getElementById('loadingMessage').classList.remove('hidden');
+            document.getElementById('noDataMessage').classList.add('hidden');
+            document.getElementById('leaveTable').classList.add('hidden');
+
+            try {
+                const data = await api.leaves.getMyLeaves();
+                if (data && data.success) {
+                    displayLeaves(data.leaves, false, true);
+                }
+            } catch (error) {
+                console.error('Error loading leaves:', error);
+            }
+        }
+
+        // Load pending leaves for managers/admins
+        async function loadPendingLeaves() {
+            document.getElementById('tableTitle').textContent = 'Pending Leave Requests';
+            document.getElementById('loadingMessage').classList.remove('hidden');
+            document.getElementById('noDataMessage').classList.add('hidden');
+            document.getElementById('leaveTable').classList.add('hidden');
+
+            try {
+                const data = await api.leaves.getPendingLeaves();
+                if (data && data.success) {
+                    displayLeaves(data.leaves, true, false);
+                }
+            } catch (error) {
+                console.error('Error loading leaves:', error);
+            }
+        }
+
+        // Load all leaves for managers/admins
+        async function loadAllLeaves() {
+            document.getElementById('tableTitle').textContent = 'All Leave Requests';
+            document.getElementById('loadingMessage').classList.remove('hidden');
+            document.getElementById('noDataMessage').classList.add('hidden');
+            document.getElementById('leaveTable').classList.add('hidden');
+
+            try {
+                const data = await api.leaves.getAllLeaves();
+                if (data && data.success) {
+                    displayLeaves(data.leaves, false, false);
+                }
+            } catch (error) {
+                console.error('Error loading leaves:', error);
+            }
+        }
+
+        // Display leaves in table
+        function displayLeaves(leaves, showApprovalActions, showCancelAction) {
+            document.getElementById('loadingMessage').classList.add('hidden');
+            
+            if (leaves.length === 0) {
+                document.getElementById('noDataMessage').classList.remove('hidden');
+                return;
+            }
+
+            const tbody = document.getElementById('leaveTableBody');
+            tbody.innerHTML = '';
+
+            leaves.forEach(leave => {
+                const row = document.createElement('tr');
+                const canCancel = showCancelAction && 
+                                leave.status === 'pending' && 
+                                new Date(leave.startDate) > new Date();
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${leave.userName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${formatLeaveType(leave.leaveType)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(leave.startDate)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatDate(leave.endDate)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${leave.workingDays || '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${leave.reason}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${leave.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                              leave.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                              leave.status === 'cancelled' ? 'bg-gray-100 text-gray-800' :
+                              'bg-red-100 text-red-800'}">
+                            ${leave.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        ${showApprovalActions && leave.status === 'pending' ? `
+                            <button 
+                                onclick="updateLeaveStatus(${leave.id}, 'approved')"
+                                class="text-green-600 hover:text-green-900 mr-3"
+                            >
+                                Approve
+                            </button>
+                            <button 
+                                onclick="updateLeaveStatus(${leave.id}, 'rejected')"
+                                class="text-red-600 hover:text-red-900"
+                            >
+                                Reject
+                            </button>
+                        ` : canCancel ? `
+                            <button 
+                                onclick="cancelLeave(${leave.id})"
+                                class="text-red-600 hover:text-red-900"
+                            >
+                                Cancel
+                            </button>
+                        ` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('leaveTable').classList.remove('hidden');
+        }
+
+        // Format leave type for display
+        function formatLeaveType(type) {
+            const typeMap = {
+                'sick': 'Sick Leave',
+                'casual': 'Casual Leave',
+                'vacation': 'Vacation',
+                'academic': 'Academic',
+                'lop': 'Loss of Pay',
+                'wfh': 'Work From Home',
+                'compOff': 'Comp Off',
+                'compOff_credit': 'Comp Off Credit'
+            };
+            return typeMap[type] || type;
+        }
+
+        // Update leave status
+        async function updateLeaveStatus(leaveId, status) {
+            const rejectionReason = status === 'rejected' ? 
+                prompt('Please provide a reason for rejection:') : '';
+            
+            if (status === 'rejected' && !rejectionReason) {
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to ${status} this leave request?`)) {
+                return;
+            }
+
+            try {
+                const data = await api.leaves.updateStatus(leaveId, status, rejectionReason);
+
+                if (data && data.success) {
+                    alert(data.message);
+                    loadPendingLeaves();
+                } else {
+                    alert('Error: ' + (data?.message || 'Failed to update leave status'));
+                }
+            } catch (error) {
+                console.error('Error updating leave status:', error);
+                alert('An error occurred while updating the leave status');
+            }
+        }
+
+        // Cancel leave
+        async function cancelLeave(leaveId) {
+            const cancellationReason = prompt('Please provide a reason for cancellation:');
+            if (!cancellationReason) {
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to cancel this leave request?')) {
+                return;
+            }
+
+            try {
+                const data = await api.leaves.cancelLeave(leaveId, cancellationReason);
+
+                if (data && data.success) {
+                    alert(data.message);
+                    loadMyLeaves();
+                    loadLeaveBalance();
+                } else {
+                    alert('Error: ' + (data?.message || 'Failed to cancel leave'));
+                }
+            } catch (error) {
+                console.error('Error cancelling leave:', error);
+                alert('An error occurred while cancelling the leave');
+            }
+        }
+
+        // WFH Modal functions
+        function showWFHModal() {
+            document.getElementById('wfhModal').classList.remove('hidden');
+            document.getElementById('wfhDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        function closeWFHModal() {
+            document.getElementById('wfhModal').classList.add('hidden');
+            document.getElementById('wfhForm').reset();
+        }
+
+        // Comp Off Modal functions
+        function showCompOffModal() {
+            document.getElementById('compOffModal').classList.remove('hidden');
+        }
+
+        function closeCompOffModal() {
+            document.getElementById('compOffModal').classList.add('hidden');
+            document.getElementById('compOffForm').reset();
+        }
+
+        // WFH Form submission
+        document.getElementById('wfhForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const date = document.getElementById('wfhDate').value;
+            const reason = document.getElementById('wfhReason').value;
+
+            try {
+                const data = await api.leaves.markWFH(date, reason);
+
+                if (data.success) {
+                    alert(data.message);
+                    closeWFHModal();
+                    loadMyLeaves();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('An error occurred while marking WFH');
+            }
+        });
+
+        // Comp Off Form submission
+        document.getElementById('compOffForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const days = document.getElementById('compOffDays').value;
+            const reason = document.getElementById('compOffReason').value;
+
+            try {
+                const data = await api.leaves.addCompOff(days, reason);
+
+                if (data.success) {
+                    alert(data.message);
+                    closeCompOffModal();
+                    loadLeaveBalance();
+                    loadMyLeaves();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('An error occurred while adding comp off');
+            }
+        });
+
+        // Format date
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                await api.auth.logout();
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            localStorage.clear();
+            window.location.href = '/';
+        }
+
+        // Initialize on page load
+        initDashboard();
+    </script>
+</body>
+</html> 

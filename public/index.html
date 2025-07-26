@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS Leave Portal - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">HRMS Leave Portal</h1>
+                <p class="text-gray-600 mt-2">Comprehensive Leave Management System</p>
+            </div>
+
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                        Email Address
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        required 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter your email"
+                    >
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                        Password
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter your password"
+                    >
+                </div>
+
+                <button 
+                    type="submit" 
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 font-medium"
+                >
+                    Login
+                </button>
+            </form>
+
+            <div id="error" class="mt-4 text-red-600 text-sm text-center hidden"></div>
+            
+            <div class="mt-6 text-sm text-gray-600">
+                <p class="font-semibold mb-3">Test Accounts:</p>
+                <div class="bg-gray-50 rounded-md p-4 space-y-2">
+                    <div class="border-b pb-2">
+                        <p class="font-medium text-gray-800">Admin</p>
+                        <p class="text-xs">Email: admin@company.com</p>
+                        <p class="text-xs">Password: password123</p>
+                    </div>
+                    <div class="border-b pb-2">
+                        <p class="font-medium text-gray-800">Manager</p>
+                        <p class="text-xs">Email: jane@company.com</p>
+                        <p class="text-xs">Password: password123</p>
+                    </div>
+                    <div class="border-b pb-2">
+                        <p class="font-medium text-gray-800">Employee</p>
+                        <p class="text-xs">Email: john@company.com</p>
+                        <p class="text-xs">Password: password123</p>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-800">Intern</p>
+                        <p class="text-xs">Email: intern@company.com</p>
+                        <p class="text-xs">Password: password123</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store user data and token in localStorage
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', data.token);
+                    // Redirect to dashboard
+                    window.location.href = '/dashboard.html';
+                } else {
+                    errorDiv.textContent = data.message;
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'An error occurred. Please try again.';
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html> 
