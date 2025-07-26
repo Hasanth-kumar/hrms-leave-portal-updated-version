@@ -67,6 +67,40 @@ const userSchema = new mongoose.Schema({
             min: 0
         }
     },
+    lopTracking: {
+        yearlyLOP: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+        monthlyLOP: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+        lastLOPReset: {
+            type: Date,
+            default: Date.now
+        },
+        lopHistory: [{
+            date: {
+                type: Date,
+                default: Date.now
+            },
+            days: {
+                type: Number,
+                required: true
+            },
+            reason: {
+                type: String,
+                required: true
+            },
+            leaveId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Leave'
+            }
+        }]
+    },
     carryForward: {
         type: Number,
         default: 0,
@@ -133,6 +167,113 @@ userSchema.methods.initializeLeaveBalance = function() {
             this.leaveBalance.academic = Math.round((monthsWorked / 12) * 15);
         }
     }
+};
+
+// Check if user has exceeded LOP limits
+userSchema.methods.checkLOPLimits = async function() {
+    const Config = require('./Config');
+    const config = await Config.getConfig();
+    const lopSettings = config.systemSettings.lopSettings;
+    
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    
+    // Reset LOP counters if needed
+    const lastReset = new Date(this.lopTracking.lastLOPReset);
+    const needsReset = lopSettings.lopResetPeriod === 'yearly' 
+        ? lastReset.getFullYear() < currentYear
+        : lastReset.getMonth() < currentMonth || lastReset.getFullYear() < currentYear;
+    
+    if (needsReset) {
+        if (lopSettings.lopResetPeriod === 'yearly') {
+            this.lopTracking.yearlyLOP = 0;
+            this.lopTracking.monthlyLOP = 0;
+        } else {
+            this.lopTracking.monthlyLOP = 0;
+        }
+        this.lopTracking.lastLOPReset = new Date();
+    }
+    
+    return {
+        exceedsYearlyLimit: this.lopTracking.yearlyLOP >= config.systemSettings.maxLOPDays,
+        exceedsMonthlyLimit: this.lopTracking.monthlyLOP >= config.systemSettings.maxLOPDaysPerMonth,
+        nearThreshold: this.lopTracking.yearlyLOP >= lopSettings.lopAlertThreshold,
+        yearlyLOP: this.lopTracking.yearlyLOP,
+        monthlyLOP: this.lopTracking.monthlyLOP,
+        maxYearlyLOP: config.systemSettings.maxLOPDays,
+        maxMonthlyLOP: config.systemSettings.maxLOPDaysPerMonth
+    };
+};
+
+// Add LOP days to user tracking
+userSchema.methods.addLOPDays = function(days, reason, leaveId = null) {
+    this.lopTracking.yearlyLOP += days;
+    this.lopTracking.monthlyLOP += days;
+    this.leaveBalance.lop += days;
+    
+    this.lopTracking.lopHistory.push({
+        date: new Date(),
+        days: days,
+        reason: reason,
+        leaveId: leaveId
+    });
+    
+    return this.save();
+};
+
+// Convert negative leave balances to LOP
+userSchema.methods.convertNegativeBalancesToLOP = async function() {
+    const Config = require('./Config');
+    const config = await Config.getConfig();
+    
+    if (!config.systemSettings.lopSettings.autoConvertNegativeBalance) {
+        return { converted: false, message: 'Auto-conversion is disabled' };
+    }
+    
+    const leaveTypes = ['sick', 'casual', 'vacation', 'academic'];
+    let totalConverted = 0;
+    const conversions = [];
+    
+    for (const type of leaveTypes) {
+        if (this.leaveBalance[type] < 0) {
+            const negativeAmount = Math.abs(this.leaveBalance[type]);
+            totalConverted += negativeAmount;
+            
+            conversions.push({
+                leaveType: type,
+                amount: negativeAmount
+            });
+            
+            // Reset the leave balance to 0
+            this.leaveBalance[type] = 0;
+        }
+    }
+    
+    if (totalConverted > 0) {
+        // Check LOP limits before conversion
+        const lopStatus = await this.checkLOPLimits();
+        
+        if (lopStatus.yearlyLOP + totalConverted > lopStatus.maxYearlyLOP) {
+            return {
+                converted: false,
+                message: `Cannot convert ${totalConverted} days to LOP. Would exceed yearly limit of ${lopStatus.maxYearlyLOP} days.`,
+                currentLOP: lopStatus.yearlyLOP,
+                attemptedConversion: totalConverted
+            };
+        }
+        
+        // Add LOP days
+        await this.addLOPDays(totalConverted, `Auto-conversion of negative leave balances: ${conversions.map(c => `${c.leaveType}(${c.amount})`).join(', ')}`);
+        
+        return {
+            converted: true,
+            totalConverted: totalConverted,
+            conversions: conversions,
+            newLOPTotal: this.lopTracking.yearlyLOP
+        };
+    }
+    
+    return { converted: false, message: 'No negative balances to convert' };
 };
 
 // Virtual for full name (can be extended later)

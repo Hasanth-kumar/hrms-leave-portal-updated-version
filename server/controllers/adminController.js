@@ -386,33 +386,37 @@ const runMonthlyAccrual = async (req, res) => {
             user.leaveBalance.casual += rates.casual;
             if (user.type === 'regular') {
                 user.leaveBalance.vacation += rates.vacation || 0;
+                user.leaveBalance.academic += rates.academic || 0;
+            } else {
+                user.leaveBalance.academic += rates.academic || 0;
             }
             
             // Round to 1 decimal place
             user.leaveBalance.sick = Math.round(user.leaveBalance.sick * 10) / 10;
             user.leaveBalance.casual = Math.round(user.leaveBalance.casual * 10) / 10;
             user.leaveBalance.vacation = Math.round(user.leaveBalance.vacation * 10) / 10;
+            user.leaveBalance.academic = Math.round(user.leaveBalance.academic * 10) / 10;
             
-            // Check for negative balance and convert to LOP
-            ['sick', 'casual', 'vacation'].forEach(type => {
-                if (user.leaveBalance[type] < 0) {
-                    user.leaveBalance.lop += Math.abs(user.leaveBalance[type]);
-                    user.leaveBalance[type] = 0;
-                }
-            });
+            // Convert negative balances to LOP (new feature)
+            const conversionResult = await user.convertNegativeBalancesToLOP();
+            if (conversionResult.converted) {
+                console.log(`Converted ${conversionResult.totalConverted} negative leave days to LOP for user ${user.name}`);
+            }
             
             // Cap annual quotas
             const quotas = config.leaveQuotas[user.type];
             if (user.leaveBalance.sick > quotas.sick) user.leaveBalance.sick = quotas.sick;
             if (user.leaveBalance.casual > quotas.casual) user.leaveBalance.casual = quotas.casual;
             if (user.leaveBalance.vacation > quotas.vacation) user.leaveBalance.vacation = quotas.vacation;
+            if (user.leaveBalance.academic > quotas.academic) user.leaveBalance.academic = quotas.academic;
             
             await user.save();
             
             processed++;
             totalCredited += (user.leaveBalance.sick - previousBalance.sick) + 
                            (user.leaveBalance.casual - previousBalance.casual) + 
-                           (user.leaveBalance.vacation - previousBalance.vacation);
+                           (user.leaveBalance.vacation - previousBalance.vacation) +
+                           (user.leaveBalance.academic - previousBalance.academic);
         }
         
         // Log the accrual run
@@ -508,6 +512,194 @@ const getLeaveStats = async (req, res) => {
     }
 };
 
+// Get LOP settings
+const getLOPSettings = async (req, res) => {
+    try {
+        const config = await Config.getConfig();
+        
+        res.json({
+            success: true,
+            lopSettings: {
+                maxLOPDays: config.systemSettings.maxLOPDays,
+                maxLOPDaysPerMonth: config.systemSettings.maxLOPDaysPerMonth,
+                ...config.systemSettings.lopSettings
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching LOP settings: ' + error.message
+        });
+    }
+};
+
+// Update LOP settings
+const updateLOPSettings = async (req, res) => {
+    try {
+        const config = await Config.getConfig();
+        const { 
+            maxLOPDays, 
+            maxLOPDaysPerMonth, 
+            autoConvertNegativeBalance,
+            lopResetPeriod,
+            allowLOPCarryForward,
+            lopAlertThreshold,
+            restrictLeaveAfterMaxLOP,
+            lopDeductionFromSalary
+        } = req.body;
+
+        // Update main LOP limits
+        if (maxLOPDays !== undefined) {
+            config.systemSettings.maxLOPDays = maxLOPDays;
+        }
+        if (maxLOPDaysPerMonth !== undefined) {
+            config.systemSettings.maxLOPDaysPerMonth = maxLOPDaysPerMonth;
+        }
+
+        // Update LOP sub-settings
+        if (autoConvertNegativeBalance !== undefined) {
+            config.systemSettings.lopSettings.autoConvertNegativeBalance = autoConvertNegativeBalance;
+        }
+        if (lopResetPeriod !== undefined) {
+            config.systemSettings.lopSettings.lopResetPeriod = lopResetPeriod;
+        }
+        if (allowLOPCarryForward !== undefined) {
+            config.systemSettings.lopSettings.allowLOPCarryForward = allowLOPCarryForward;
+        }
+        if (lopAlertThreshold !== undefined) {
+            config.systemSettings.lopSettings.lopAlertThreshold = lopAlertThreshold;
+        }
+        if (restrictLeaveAfterMaxLOP !== undefined) {
+            config.systemSettings.lopSettings.restrictLeaveAfterMaxLOP = restrictLeaveAfterMaxLOP;
+        }
+        if (lopDeductionFromSalary !== undefined) {
+            config.systemSettings.lopSettings.lopDeductionFromSalary = lopDeductionFromSalary;
+        }
+
+        await config.save();
+        
+        res.json({
+            success: true,
+            message: 'LOP settings updated successfully',
+            lopSettings: {
+                maxLOPDays: config.systemSettings.maxLOPDays,
+                maxLOPDaysPerMonth: config.systemSettings.maxLOPDaysPerMonth,
+                ...config.systemSettings.lopSettings
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error updating LOP settings: ' + error.message
+        });
+    }
+};
+
+// Get LOP report for all users
+const getLOPReport = async (req, res) => {
+    try {
+        const { year = new Date().getFullYear() } = req.query;
+        
+        const users = await User.find({ isActive: true })
+            .select('name email department type lopTracking leaveBalance')
+            .sort('name');
+        
+        const lopReport = users.map(user => {
+            const lopStatus = {
+                userName: user.name,
+                email: user.email,
+                department: user.department,
+                userType: user.type,
+                yearlyLOP: user.lopTracking.yearlyLOP || 0,
+                monthlyLOP: user.lopTracking.monthlyLOP || 0,
+                totalLOPBalance: user.leaveBalance.lop || 0,
+                lopHistory: user.lopTracking.lopHistory || [],
+                lastLOPReset: user.lopTracking.lastLOPReset
+            };
+            
+            return lopStatus;
+        });
+        
+        res.json({
+            success: true,
+            year,
+            lopReport,
+            summary: {
+                totalUsers: lopReport.length,
+                usersWithLOP: lopReport.filter(u => u.yearlyLOP > 0).length,
+                totalLOPDays: lopReport.reduce((sum, u) => sum + u.yearlyLOP, 0),
+                averageLOPPerUser: lopReport.length > 0 ? 
+                    Math.round((lopReport.reduce((sum, u) => sum + u.yearlyLOP, 0) / lopReport.length) * 100) / 100 : 0
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error generating LOP report: ' + error.message
+        });
+    }
+};
+
+// Force conversion of negative balances to LOP for a specific user
+const convertUserNegativeBalances = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        const conversionResult = await user.convertNegativeBalancesToLOP();
+        
+        res.json({
+            success: true,
+            message: conversionResult.converted 
+                ? `Successfully converted ${conversionResult.totalConverted} negative leave days to LOP`
+                : conversionResult.message,
+            conversionResult
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error converting negative balances: ' + error.message
+        });
+    }
+};
+
+// Bulk conversion of negative balances for all users
+const bulkConvertNegativeBalances = async (req, res) => {
+    try {
+        const users = await User.find({ isActive: true });
+        const results = [];
+        
+        for (const user of users) {
+            const conversionResult = await user.convertNegativeBalancesToLOP();
+            if (conversionResult.converted) {
+                results.push({
+                    userId: user._id,
+                    userName: user.name,
+                    ...conversionResult
+                });
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: `Bulk conversion completed. Processed ${results.length} users with negative balances.`,
+            conversions: results
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error in bulk conversion: ' + error.message
+        });
+    }
+};
+
 module.exports = {
     getQuotas,
     updateQuotas,
@@ -523,5 +715,10 @@ module.exports = {
     getAccrualInfo,
     runMonthlyAccrual,
     updateAccrualRates,
-    getLeaveStats
+    getLeaveStats,
+    getLOPSettings,
+    updateLOPSettings,
+    getLOPReport,
+    convertUserNegativeBalances,
+    bulkConvertNegativeBalances
 }; 

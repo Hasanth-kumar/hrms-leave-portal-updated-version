@@ -9,6 +9,7 @@ router.use(authenticate);
 
 // Employee routes
 router.get('/balance', leaveController.getLeaveBalance);
+router.get('/lop-status', leaveController.getLOPStatus);
 router.get('/holidays', leaveController.getHolidays);
 router.get('/my-leaves', leaveController.getMyLeaves);
 

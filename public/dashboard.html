@@ -30,12 +30,27 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Leave Balance Section -->
-        <div id="leaveBalanceSection" class="mb-8">
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-xl font-semibold mb-4">Leave Balance</h2>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="leaveBalanceCards">
-                    <!-- Balance cards will be inserted here -->
+        <!-- Leave Balance Summary -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">Your Leave Balance</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="leaveBalanceCards"></div>
+            
+            <!-- LOP Status Alert -->
+            <div id="lopAlert" class="mt-4 hidden">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            ⚠️
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-yellow-800">
+                                LOP Status Alert
+                            </h3>
+                            <div id="lopAlertContent" class="mt-2 text-sm text-yellow-700">
+                                <!-- LOP alert content will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -220,8 +235,57 @@
                 if (data && data.success) {
                     displayLeaveBalance(data.balance);
                 }
+                
+                // Also load LOP status
+                await loadLOPStatus();
             } catch (error) {
                 console.error('Error loading leave balance:', error);
+            }
+        }
+
+        // Load LOP status
+        async function loadLOPStatus() {
+            try {
+                const response = await fetch('/api/leaves/lop-status', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                const data = await response.json();
+                
+                if (data && data.success) {
+                    displayLOPAlert(data.lopStatus);
+                }
+            } catch (error) {
+                console.error('Error loading LOP status:', error);
+            }
+        }
+
+        // Display LOP alert if needed
+        function displayLOPAlert(lopStatus) {
+            const alertDiv = document.getElementById('lopAlert');
+            const alertContent = document.getElementById('lopAlertContent');
+            
+            // Check if user needs to be alerted about LOP
+            const needsAlert = lopStatus.exceedsYearlyLimit || 
+                              lopStatus.exceedsMonthlyLimit || 
+                              lopStatus.nearThreshold;
+            
+            if (needsAlert) {
+                let alertMessages = [];
+                
+                if (lopStatus.exceedsYearlyLimit) {
+                    alertMessages.push(`⛔ You have exceeded the maximum yearly LOP limit of ${lopStatus.maxYearlyLOP} days. Current LOP: ${lopStatus.yearlyLOP} days.`);
+                } else if (lopStatus.exceedsMonthlyLimit) {
+                    alertMessages.push(`📅 You have exceeded the monthly LOP limit of ${lopStatus.maxMonthlyLOP} days. Current monthly LOP: ${lopStatus.monthlyLOP} days.`);
+                } else if (lopStatus.nearThreshold) {
+                    alertMessages.push(`⚠️ You are approaching the LOP threshold. Current yearly LOP: ${lopStatus.yearlyLOP} days of ${lopStatus.maxYearlyLOP} days allowed.`);
+                }
+                
+                alertContent.innerHTML = alertMessages.join('<br/>');
+                alertDiv.classList.remove('hidden');
+            } else {
+                alertDiv.classList.add('hidden');
             }
         }
 

@@ -20,18 +20,25 @@ router.delete('/holidays/:holidayId', adminController.deleteHoliday);
 router.get('/users', adminController.getUsers);
 router.post('/users', adminController.addUser);
 router.put('/users/:userId', adminController.updateUser);
-router.patch('/users/:userId/toggle-status', adminController.toggleUserStatus);
+router.put('/users/:userId/toggle-status', adminController.toggleUserStatus);
 
 // System settings
 router.get('/settings', adminController.getSettings);
 router.put('/settings', adminController.updateSettings);
 
 // Accrual management
-router.get('/accrual/info', adminController.getAccrualInfo);
+router.get('/accrual-info', adminController.getAccrualInfo);
 router.post('/accrual/run', adminController.runMonthlyAccrual);
-router.put('/accrual/rates', adminController.updateAccrualRates);
+router.put('/accrual-rates', adminController.updateAccrualRates);
 
-// Statistics
-router.get('/stats/leaves', adminController.getLeaveStats);
+// Statistics and reporting
+router.get('/leave-stats', adminController.getLeaveStats);
+
+// LOP Management
+router.get('/lop-settings', adminController.getLOPSettings);
+router.put('/lop-settings', adminController.updateLOPSettings);
+router.get('/lop-report', adminController.getLOPReport);
+router.post('/convert-negative-balances/:userId', adminController.convertUserNegativeBalances);
+router.post('/bulk-convert-negative-balances', adminController.bulkConvertNegativeBalances);
 
 module.exports = router; 

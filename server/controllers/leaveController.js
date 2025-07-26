@@ -251,6 +251,54 @@ const validateLeaveRequest = async (user, leaveData, systemSettings) => {
         }
     }
     
+    // Get full user object for LOP checking
+    const fullUser = await User.findById(user._id);
+    
+    // Check LOP limits before allowing new leave
+    const lopStatus = await fullUser.checkLOPLimits();
+    
+    if (lopStatus.exceedsYearlyLimit && systemSettings.lopSettings.restrictLeaveAfterMaxLOP) {
+        return {
+            valid: false,
+            message: `Cannot apply for leave. You have exceeded the maximum LOP limit of ${lopStatus.maxYearlyLOP} days for this year (Current: ${lopStatus.yearlyLOP} days).`
+        };
+    }
+    
+    // Calculate working days for this leave request
+    const leaveDays = await calculateWorkingDays(startDate, endDate);
+    
+    // Check if this leave would cause LOP and validate against limits
+    if (!['lop', 'wfh'].includes(leaveType)) {
+        const availableBalance = fullUser.leaveBalance[leaveType] || 0;
+        if (leaveDays > availableBalance) {
+            const potentialLOPDays = leaveDays - availableBalance;
+            
+            // Check if adding this LOP would exceed limits
+            if (lopStatus.yearlyLOP + potentialLOPDays > lopStatus.maxYearlyLOP) {
+                return {
+                    valid: false,
+                    message: `This leave request would result in ${potentialLOPDays} LOP days, which would exceed your yearly LOP limit of ${lopStatus.maxYearlyLOP} days. Current LOP: ${lopStatus.yearlyLOP} days.`
+                };
+            }
+            
+            if (lopStatus.monthlyLOP + potentialLOPDays > lopStatus.maxMonthlyLOP) {
+                return {
+                    valid: false,
+                    message: `This leave request would result in ${potentialLOPDays} LOP days, which would exceed your monthly LOP limit of ${lopStatus.maxMonthlyLOP} days. Current monthly LOP: ${lopStatus.monthlyLOP} days.`
+                };
+            }
+            
+            // Warn user about LOP
+            if (potentialLOPDays > 0) {
+                return {
+                    valid: true,
+                    warning: `This leave request will result in ${potentialLOPDays} Loss of Pay (LOP) days due to insufficient leave balance.`,
+                    lopDays: potentialLOPDays
+                };
+            }
+        }
+    }
+    
     // Check advance notice for different leave types
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -297,7 +345,6 @@ const validateLeaveRequest = async (user, leaveData, systemSettings) => {
         }
         
         // Check consecutive days limit
-        const leaveDays = await calculateWorkingDays(startDate, endDate);
         if (leaveDays > academicSettings.maxConsecutiveDays) {
             return { 
                 valid: false, 
@@ -314,12 +361,13 @@ const validateLeaveRequest = async (user, leaveData, systemSettings) => {
         }
         
         // Additional validation: Check if user has sufficient academic leave balance
-        const currentUser = await User.findById(user._id);
-        const academicBalance = currentUser.leaveBalance.academic || 0;
+        const academicBalance = fullUser.leaveBalance.academic || 0;
         if (leaveDays > academicBalance) {
+            const lopDays = leaveDays - academicBalance;
             return { 
-                valid: false, 
-                message: `Insufficient academic leave balance. You have ${academicBalance} days available.` 
+                valid: true,
+                warning: `Insufficient academic leave balance. ${lopDays} days will be marked as LOP.`,
+                lopDays: lopDays
             };
         }
     }
@@ -419,7 +467,10 @@ const updateLeaveStatus = async (req, res) => {
                     // Partial deduction and LOP
                     const lopDays = leave.workingDays - availableBalance;
                     user.leaveBalance[leave.leaveType] = 0;
-                    user.leaveBalance.lop += lopDays;
+                    
+                    // Add LOP days using the new tracking method
+                    await user.addLOPDays(lopDays, `Leave approval - ${leave.leaveType} leave insufficient balance`, leave._id);
+                    
                     leave.lopDays = lopDays;
                 } else {
                     // Full deduction from leave balance
@@ -559,6 +610,38 @@ const getLeaveBalance = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error fetching leave balance',
+            error: error.message
+        });
+    }
+};
+
+// Get LOP status for current user
+const getLOPStatus = async (req, res) => {
+    try {
+        const currentUser = req.user;
+        
+        if (!currentUser) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Not authenticated' 
+            });
+        }
+
+        const user = await User.findById(currentUser._id);
+        const lopStatus = await user.checkLOPLimits();
+        
+        res.json({
+            success: true,
+            lopStatus: {
+                ...lopStatus,
+                lopHistory: user.lopTracking.lopHistory || [],
+                totalLOPBalance: user.leaveBalance.lop || 0
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching LOP status',
             error: error.message
         });
     }
@@ -790,6 +873,7 @@ module.exports = {
     updateLeaveStatus,
     cancelLeave,
     getLeaveBalance,
+    getLOPStatus,
     markWFH,
     addCompOff,
     getHolidays,

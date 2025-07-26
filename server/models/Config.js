@@ -86,7 +86,11 @@ const configSchema = new mongoose.Schema({
     systemSettings: {
         maxLOPDays: {
             type: Number,
-            default: 30
+            default: 10 // Maximum LOP days allowed per year
+        },
+        maxLOPDaysPerMonth: {
+            type: Number,
+            default: 5 // Maximum LOP days allowed per month
         },
         carryForwardCap: {
             type: Number,
@@ -117,6 +121,33 @@ const configSchema = new mongoose.Schema({
         workingDays: {
             type: [Number],
             default: [1, 2, 3, 4, 5] // Monday to Friday
+        },
+        lopSettings: {
+            autoConvertNegativeBalance: {
+                type: Boolean,
+                default: true // Automatically convert negative leave balance to LOP
+            },
+            lopResetPeriod: {
+                type: String,
+                enum: ['monthly', 'yearly'],
+                default: 'yearly' // When to reset LOP counter
+            },
+            allowLOPCarryForward: {
+                type: Boolean,
+                default: false // Whether to carry forward LOP to next period
+            },
+            lopAlertThreshold: {
+                type: Number,
+                default: 5 // Alert when LOP days reach this threshold
+            },
+            restrictLeaveAfterMaxLOP: {
+                type: Boolean,
+                default: true // Restrict new leave applications after max LOP reached
+            },
+            lopDeductionFromSalary: {
+                type: Boolean,
+                default: true // Whether LOP affects salary
+            }
         },
         academicLeaveSettings: {
             requireDocuments: {
