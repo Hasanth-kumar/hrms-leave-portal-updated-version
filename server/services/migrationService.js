@@ -52,6 +52,15 @@ const seedUsers = async () => {
                 type: 'intern',
                 joiningDate: new Date('2024-01-01'),
                 department: 'Engineering'
+            },
+            {
+                name: 'Test User',
+                email: 'test@example.com',
+                password: defaultPassword,
+                role: 'admin',
+                type: 'regular',
+                joiningDate: new Date('2021-01-01'),
+                department: 'Testing'
             }
         ];
 

@@ -283,7 +283,11 @@ const getSettings = async (req, res) => {
         
         res.json({
             success: true,
-            settings: config.systemSettings
+            data: {
+                leaveQuotas: config.leaveQuotas,
+                accrualRates: config.accrualRates,
+                systemSettings: config.systemSettings
+            }
         });
     } catch (error) {
         res.status(500).json({
@@ -297,20 +301,29 @@ const getSettings = async (req, res) => {
 const updateSettings = async (req, res) => {
     try {
         const config = await Config.getConfig();
+        const updates = req.body;
         
-        // Update only provided settings
-        Object.keys(req.body).forEach(key => {
-            if (config.systemSettings[key] !== undefined) {
-                config.systemSettings[key] = req.body[key];
-            }
-        });
+        // Update the config fields that were provided
+        if (updates.leaveQuotas) {
+            config.leaveQuotas = { ...config.leaveQuotas, ...updates.leaveQuotas };
+        }
+        if (updates.accrualRates) {
+            config.accrualRates = { ...config.accrualRates, ...updates.accrualRates };
+        }
+        if (updates.systemSettings) {
+            config.systemSettings = { ...config.systemSettings, ...updates.systemSettings };
+        }
 
         await config.save();
         
         res.json({
             success: true,
             message: 'Settings updated successfully',
-            settings: config.systemSettings
+            data: {
+                leaveQuotas: config.leaveQuotas,
+                accrualRates: config.accrualRates,
+                systemSettings: config.systemSettings
+            }
         });
     } catch (error) {
         res.status(500).json({
@@ -700,6 +713,145 @@ const bulkConvertNegativeBalances = async (req, res) => {
     }
 };
 
+// Get all departments
+const getDepartments = async (req, res) => {
+    try {
+        // Get unique departments from users
+        const departments = await User.distinct('department', { 
+            department: { $ne: null },
+            isActive: true 
+        });
+        
+        // Get department statistics
+        const departmentStats = await Promise.all(departments.map(async (dept) => {
+            const userCount = await User.countDocuments({ 
+                department: dept,
+                isActive: true 
+            });
+            
+            const leaveCount = await Leave.countDocuments({
+                userId: { 
+                    $in: await User.find({ department: dept }).distinct('_id') 
+                },
+                status: 'approved',
+                startDate: { 
+                    $gte: new Date(new Date().getFullYear(), 0, 1) 
+                }
+            });
+            
+            return {
+                name: dept,
+                employeeCount: userCount,
+                totalLeavesThisYear: leaveCount
+            };
+        }));
+        
+        res.json({
+            success: true,
+            data: departmentStats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching departments',
+            error: error.message
+        });
+    }
+};
+
+// Export leave report
+const exportReport = async (req, res) => {
+    try {
+        const { year, department, leaveType, status } = req.query;
+        
+        // Build query
+        const query = {};
+        if (year) {
+            query.startDate = {
+                $gte: new Date(parseInt(year), 0, 1),
+                $lt: new Date(parseInt(year) + 1, 0, 1)
+            };
+        }
+        if (leaveType) {
+            query.leaveType = leaveType;
+        }
+        if (status) {
+            query.status = status;
+        }
+        
+        // Get leaves with user details
+        let leaves = await Leave.find(query)
+            .populate('userId', 'name email department')
+            .populate('approvedBy', 'name')
+            .sort('-startDate');
+        
+        // Filter by department if specified
+        if (department) {
+            leaves = leaves.filter(leave => leave.userId.department === department);
+        }
+        
+        // Convert to CSV
+        const csvData = convertToCSV(leaves);
+        
+        // Set response headers for CSV download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=leave-report-${year || 'all'}.csv`);
+        res.send(csvData);
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error exporting report',
+            error: error.message
+        });
+    }
+};
+
+// Helper function to convert leaves to CSV format
+const convertToCSV = (leaves) => {
+    const headers = [
+        'Employee Name',
+        'Email',
+        'Department',
+        'Leave Type',
+        'Start Date',
+        'End Date',
+        'Working Days',
+        'Status',
+        'Reason',
+        'Applied On',
+        'Approved By',
+        'Documents'
+    ];
+    
+    const rows = leaves.map(leave => [
+        leave.userId.name,
+        leave.userId.email,
+        leave.userId.department || 'N/A',
+        leave.leaveType,
+        formatDate(leave.startDate),
+        formatDate(leave.endDate),
+        leave.workingDays,
+        leave.status,
+        leave.reason,
+        formatDate(leave.createdAt),
+        leave.approvedBy ? leave.approvedBy.name : 'N/A',
+        leave.documents ? leave.documents.length : 0
+    ]);
+    
+    return [headers, ...rows]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+};
+
+// Helper function to format dates
+const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+};
+
 module.exports = {
     getQuotas,
     updateQuotas,
@@ -720,5 +872,7 @@ module.exports = {
     updateLOPSettings,
     getLOPReport,
     convertUserNegativeBalances,
-    bulkConvertNegativeBalances
+    bulkConvertNegativeBalances,
+    getDepartments,
+    exportReport
 }; 

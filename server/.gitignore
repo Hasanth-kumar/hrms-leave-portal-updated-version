@@ -1,0 +1,36 @@
+# dependencies
+/node_modules
+
+# environment
+.env
+.env.*
+!.env.example
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# testing
+/coverage
+
+# misc
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# uploads directory content but keep directory
+/uploads/*
+!/uploads/.gitkeep
+
+# temporary files
+*.tmp
+*.temp 

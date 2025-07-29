@@ -18,7 +18,7 @@ const authenticate = async (req, res, next) => {
         const token = authHeader.substring(7); // Remove 'Bearer ' prefix
         
         // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-here');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Find user
         const user = await User.findById(decoded.userId).select('-password');
@@ -94,7 +94,7 @@ const optionalAuth = async (req, res, next) => {
         }
 
         const token = authHeader.substring(7);
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-here');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.userId).select('-password');
         
         if (user && user.isActive) {

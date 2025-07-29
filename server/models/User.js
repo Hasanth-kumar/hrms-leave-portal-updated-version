@@ -206,7 +206,9 @@ userSchema.methods.checkLOPLimits = async function() {
 };
 
 // Add LOP days to user tracking
-userSchema.methods.addLOPDays = function(days, reason, leaveId = null) {
+userSchema.methods.addLOPDays = async function(days, reason, leaveId = null) {
+    const previousLOP = this.lopTracking.yearlyLOP;
+    
     this.lopTracking.yearlyLOP += days;
     this.lopTracking.monthlyLOP += days;
     this.leaveBalance.lop += days;
@@ -218,7 +220,30 @@ userSchema.methods.addLOPDays = function(days, reason, leaveId = null) {
         leaveId: leaveId
     });
     
-    return this.save();
+    // Check if we need to send LOP alert
+    const shouldSendAlert = (previousLOP < 5 && this.lopTracking.yearlyLOP >= 5) || 
+                           (this.lopTracking.yearlyLOP >= 10);
+    
+    const result = await this.save();
+    
+    // Send LOP alert email if threshold reached
+    if (shouldSendAlert) {
+        try {
+            const emailService = require('../services/emailService');
+            const lopDetails = await this.checkLOPLimits();
+            await emailService.sendLOPAlertEmail(this, {
+                totalLOP: this.lopTracking.yearlyLOP,
+                yearlyLOP: this.lopTracking.yearlyLOP,
+                monthlyLOP: this.lopTracking.monthlyLOP,
+                maxYearlyLOP: lopDetails.maxYearlyLOP,
+                maxMonthlyLOP: lopDetails.maxMonthlyLOP
+            });
+        } catch (error) {
+            console.error('Failed to send LOP alert email:', error);
+        }
+    }
+    
+    return result;
 };
 
 // Convert negative leave balances to LOP

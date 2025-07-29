@@ -39,46 +39,99 @@ A comprehensive web-based Leave Management Portal as part of an HRMS system that
 - **MongoDB** with Mongoose ODM
 - **JWT** for authentication
 - **bcryptjs** for password hashing
+- **nodemailer** for email notifications
 
 ### Frontend
-- **HTML5**, **CSS3**, **JavaScript**
-- **Responsive Design** for mobile compatibility
+- **React 18** with TypeScript
+- **Tailwind CSS** for styling
+- **React Router** for navigation
+- **Context API** for state management
+- **Axios** for API requests
 
-## Installation
+## Project Structure
+
+```
+hrms-leave-app/
+├── client/                 # React frontend application
+│   ├── src/
+│   │   ├── components/    # Reusable UI components
+│   │   ├── contexts/      # React Context providers
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── pages/        # Page components
+│   │   ├── services/     # API service functions
+│   │   ├── types/        # TypeScript interfaces
+│   │   └── utils/        # Utility functions
+│   └── public/           # Static assets
+├── server/
+│   ├── config/           # Database & app configuration
+│   ├── controllers/      # Route controllers
+│   ├── middleware/       # Auth & request middleware
+│   ├── models/           # Database models
+│   ├── routes/           # API routes
+│   ├── services/         # Business logic services
+│   └── utils/            # Helper functions
+└── uploads/              # File upload directory
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js >= 14.x
+- MongoDB >= 4.x
+- npm or yarn
+
+### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Hasanth-kumar/hrms-leave-portal-updated-version.git
-   cd hrms-leave-portal-updated-version
+   git clone <repository-url>
+   cd hrms-leave-app
    ```
 
-2. **Install dependencies**
+2. **Backend Setup**
    ```bash
+   # Install backend dependencies
    npm install
-   ```
-
-3. **Environment Setup**
-   ```bash
+   
+   # Copy environment file
    cp env.example .env
+   
+   # Generate JWT secret
+   node generate-jwt-secret.js
+   
+   # Update .env with your MongoDB URI and other configurations
    ```
-   Update the `.env` file with your MongoDB connection string and other configurations.
 
-4. **Database Setup**
+3. **Frontend Setup**
    ```bash
-   npm run migrate
+   # Navigate to client directory
+   cd client
+   
+   # Install frontend dependencies
+   npm install
+   
+   # Copy environment file
+   cp .env.example .env
+   
+   # Update REACT_APP_API_URL in .env
    ```
 
-5. **Start the application**
+4. **Start Development Servers**
    ```bash
-   npm start
+   # Terminal 1 - Start backend
+   npm run server
+   
+   # Terminal 2 - Start frontend
+   cd client && npm start
    ```
 
-6. **Access the application**
-   - Open your browser and navigate to `http://localhost:3000`
+5. **Access the Application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5000
 
-## Default Users
+### Default Users
 
-After running migrations, the following test users are created:
+After setup, the following test users are available:
 
 | Email | Password | Role | Type |
 |-------|----------|------|------|
@@ -87,11 +140,31 @@ After running migrations, the following test users are created:
 | john@company.com | password123 | Employee | Regular |
 | intern@company.com | password123 | Employee | Intern |
 
-## API Endpoints
+## Development Workflow
+
+1. **Environment Setup**
+   - Follow the setup guides in `ENV_SETUP_GUIDE.md`
+   - Use appropriate .env files for different environments
+
+2. **Database Migrations**
+   - Check `DATABASE_MIGRATION_SUMMARY.md` for migration history
+   - Run migrations: `npm run migrate`
+
+3. **Testing**
+   - Backend tests: `npm run test`
+   - Frontend tests: `cd client && npm test`
+   - Integration tests: `npm run test:integration`
+
+4. **Code Quality**
+   - ESLint for code style
+   - Prettier for code formatting
+   - TypeScript for type safety
+
+## API Documentation
 
 ### Authentication
 - `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration (development)
+- `POST /api/auth/register` - User registration (admin only)
 - `GET /api/auth/me` - Get current user
 - `POST /api/auth/change-password` - Change password
 
@@ -132,26 +205,6 @@ The system supports configurable leave quotas for different employee types:
 - Maximum LOP days per year
 - Carry forward caps
 
-## Project Structure
-
-```
-hrms-leave-app/
-├── server/
-│   ├── config/          # Database configuration
-│   ├── controllers/     # Route controllers
-│   ├── middleware/      # Authentication & authorization
-│   ├── models/          # Database models
-│   ├── routes/          # API routes
-│   ├── services/        # Business logic services
-│   ├── utils/           # Utility functions
-│   └── server.js        # Main server file
-├── public/              # Frontend files
-│   ├── html files       # UI pages
-│   └── js/              # Frontend JavaScript
-├── data/                # Data storage
-└── package.json         # Dependencies
-```
-
 ## Contributing
 
 1. Fork the repository
@@ -160,14 +213,17 @@ hrms-leave-app/
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## Support
+
+For support and questions:
+1. Check the documentation in the `docs` folder
+2. Open an issue in the GitHub repository
+3. Contact the development team
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
-
-For support and questions, please open an issue in the GitHub repository.
-
 ---
 
-**Note**: This is a development version. For production deployment, ensure proper security configurations, environment variables, and database setup. 
+**Note**: For production deployment, ensure proper security configurations, environment variables, and database setup. 

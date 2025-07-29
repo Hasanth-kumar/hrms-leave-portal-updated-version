@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Leave = require('../models/Leave');
 const Config = require('../models/Config');
+const emailService = require('../services/emailService');
 const { 
     calculateWorkingDays, 
     checkOverlap, 
@@ -9,17 +10,19 @@ const {
     daysDifference 
 } = require('../utils/dateHelpers');
 
-// Email notification function (mock implementation)
+// Enhanced email notification function
 const sendEmailNotification = async (leave, action) => {
-    // In production, integrate with email service like SendGrid, AWS SES, etc.
-    console.log(`Email sent to leaves@domain.com:`);
-    console.log(`Subject: Leave ${action} - ${leave.userId.name || 'Employee'}`);
-    console.log(`Type: ${leave.leaveType}`);
-    console.log(`Dates: ${leave.startDate} to ${leave.endDate}`);
-    console.log(`Working Days: ${leave.workingDays}`);
-    console.log(`Status: ${leave.status}`);
-    if (leave.documents && leave.documents.length > 0) {
-        console.log(`Documents: ${leave.documents.length} files attached`);
+    try {
+        // Send different types of emails based on leave type and action
+        if (leave.leaveType === 'academic') {
+            await emailService.sendAcademicLeaveEmail(leave, action);
+        } else {
+            await emailService.sendLeaveApplicationEmail(leave, action);
+        }
+        
+        console.log(`📧 Email notification sent for leave ${action}: ${leave.userId.name} (${leave.leaveType})`);
+    } catch (error) {
+        console.error('Failed to send email notification:', error);
     }
 };
 
@@ -865,6 +868,58 @@ const downloadDocument = async (req, res) => {
     }
 };
 
+// Get team leaves (manager/admin only)
+const getTeamLeaves = async (req, res) => {
+    try {
+        const currentUser = req.user;
+        
+        if (!currentUser) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Not authenticated' 
+            });
+        }
+
+        // Get all users in the manager's department
+        const teamMembers = await User.find({ 
+            $or: [
+                { managerId: currentUser._id },
+                { department: currentUser.department }
+            ],
+            _id: { $ne: currentUser._id }
+        });
+        
+        const teamMemberIds = teamMembers.map(member => member._id);
+        
+        // Get leaves for team members
+        const leaves = await Leave.find({
+            userId: { $in: teamMemberIds }
+        })
+        .populate('userId', 'name email department')
+        .populate('approvedBy', 'name')
+        .sort('-createdAt');
+        
+        res.json({
+            success: true,
+            data: {
+                leaves,
+                teamMembers: teamMembers.map(member => ({
+                    id: member._id,
+                    name: member.name,
+                    email: member.email,
+                    department: member.department
+                }))
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching team leaves',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getAllLeaves,
     getMyLeaves,
@@ -877,5 +932,6 @@ module.exports = {
     markWFH,
     addCompOff,
     getHolidays,
-    downloadDocument
+    downloadDocument,
+    getTeamLeaves
 }; 

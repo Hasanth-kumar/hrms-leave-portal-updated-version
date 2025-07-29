@@ -25,6 +25,7 @@ router.get('/documents/:leaveId/:documentIndex', leaveController.downloadDocumen
 
 // Manager/Admin only routes
 router.get('/all', authorize('manager', 'admin'), leaveController.getAllLeaves);
+router.get('/team', authorize('manager', 'admin'), leaveController.getTeamLeaves);
 router.get('/pending', authorize('manager', 'admin'), leaveController.getPendingLeaves);
 router.put('/update-status/:leaveId', authorize('manager', 'admin'), leaveController.updateLeaveStatus);
 

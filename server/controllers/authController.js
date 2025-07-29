@@ -56,15 +56,18 @@ const login = async (req, res) => {
         res.json({
             success: true,
             message: 'Login successful',
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                type: user.type,
-                department: user.department,
-                leaveBalance: user.leaveBalance
+            data: {
+                token,
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    type: user.type,
+                    department: user.department,
+                    leaveBalance: user.leaveBalance,
+                    isActive: user.isActive
+                }
             }
         });
     } catch (error) {
@@ -120,15 +123,18 @@ const register = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Registration successful',
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                type: user.type,
-                department: user.department,
-                leaveBalance: user.leaveBalance
+            data: {
+                token,
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    type: user.type,
+                    department: user.department,
+                    leaveBalance: user.leaveBalance,
+                    isActive: user.isActive
+                }
             }
         });
     } catch (error) {
@@ -157,7 +163,7 @@ const getCurrentUser = async (req, res) => {
 
         res.json({
             success: true,
-            user: {
+            data: {
                 id: user._id,
                 name: user.name,
                 email: user.email,
@@ -165,7 +171,8 @@ const getCurrentUser = async (req, res) => {
                 type: user.type,
                 department: user.department,
                 leaveBalance: user.leaveBalance,
-                carryForward: user.carryForward
+                carryForward: user.carryForward,
+                isActive: user.isActive
             }
         });
     } catch (error) {
