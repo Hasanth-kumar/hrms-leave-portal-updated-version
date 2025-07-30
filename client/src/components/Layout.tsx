@@ -18,6 +18,7 @@ import {
   BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { cn, getInitials, getRoleColor } from '../utils';
 
 interface User {
@@ -34,6 +35,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const { user, logout } = useAuth();
+  const { isDarkMode } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -84,7 +86,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile sidebar backdrop */}
       <AnimatePresence>
         {sidebarOpen && !isDesktop && (
@@ -106,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           opacity: sidebarOpen ? 1 : 0,
         }}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-gray-900 overflow-hidden",
+          "fixed inset-y-0 left-0 z-50 bg-gray-900 dark:bg-gray-950 overflow-hidden",
           isDesktop ? "relative" : "",
           "transition-all duration-300 ease-in-out"
         )}
@@ -128,7 +130,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
 
           {/* User info */}
-          <div className="mx-4 mb-6 rounded-lg bg-gray-800 p-4">
+          <div className="mx-4 mb-6 rounded-lg bg-gray-800 dark:bg-gray-900 p-4">
             <div className="flex items-center space-x-3">
               <div className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-full text-white font-medium",
@@ -158,8 +160,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className={cn(
                     "group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-gray-800 text-white"
-                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      ? "bg-gray-800 dark:bg-gray-700 text-white"
+                      : "text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-800 hover:text-white"
                   )}
                 >
                   <item.icon
@@ -178,7 +180,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="p-4">
             <button
               onClick={handleLogout}
-              className="flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+              className="flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-800 hover:text-white transition-colors"
             >
               <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400" />
               Logout
@@ -190,13 +192,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top header */}
-        <header className="bg-white shadow-sm z-30 relative">
+        <header className="bg-white dark:bg-gray-800 shadow-sm z-30 relative">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* Menu button - show when sidebar is closed or on mobile */}
             <button
               onClick={() => setSidebarOpen(true)}
               className={cn(
-                "text-gray-500 hover:text-gray-700",
+                "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
                 sidebarOpen && isDesktop ? "hidden" : "block"
               )}
               aria-label="Open sidebar"
@@ -208,20 +210,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex items-center space-x-4 ml-auto">
               {/* Notifications */}
               <button 
-                className="relative p-2 text-gray-400 hover:text-gray-500"
+                className="relative p-2 text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-200"
                 aria-label="View notifications"
               >
                 <BellIcon className="h-6 w-6" />
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white" />
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white dark:ring-gray-800" />
               </button>
 
               {/* Profile dropdown */}
               <div className="relative">
                 <button 
-                  className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
                   aria-label="Open user menu"
                 >
-                  <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                  <UserCircleIcon className="h-8 w-8 text-gray-400 dark:text-gray-300" />
                 </button>
               </div>
             </div>
@@ -229,7 +231,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
           <div className="py-6">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               {children}

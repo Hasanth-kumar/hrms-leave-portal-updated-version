@@ -7,8 +7,11 @@ import {
   ExclamationTriangleIcon,
   ChartBarIcon,
   DocumentTextIcon,
+  SunIcon,
+  MoonIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 import { LeaveBalance, LOPStatus, Leave, Holiday, ApiResponse } from '../types';
 import { formatDate, getLeaveTypeColor, getLeaveTypeLabel } from '../utils';
@@ -77,17 +80,17 @@ const LeaveBalanceCard: React.FC<LeaveBalanceCardProps> = React.memo(({ type, ba
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.02 }}
-      className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
       role="article"
       aria-label={`${label} balance: ${balance} days`}
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{balance}</p>
-          <p className="text-xs text-gray-500 mt-1">days available</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{label}</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{balance}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">days available</p>
         </div>
-        <div className={`p-3 rounded-full ${color} bg-opacity-10`} aria-hidden="true">
+        <div className={`p-3 rounded-full ${color} bg-opacity-10 dark:bg-opacity-20`} aria-hidden="true">
           {icon}
         </div>
       </div>
@@ -100,6 +103,7 @@ LeaveBalanceCard.displayName = 'LeaveBalanceCard';
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   
   // Consolidated state management
   const [dashboardState, setDashboardState] = useState<DashboardState>({
@@ -309,8 +313,8 @@ const Dashboard: React.FC = () => {
   const renderLoadingState = useMemo(() => (
     <div className="flex items-center justify-center h-64" role="status" aria-label="Loading dashboard">
       <div className="flex flex-col items-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="text-sm text-gray-600">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           Loading dashboard data{dashboardState.retryCount > 0 && ` (attempt ${dashboardState.retryCount + 1})`}...
         </p>
       </div>
@@ -320,19 +324,19 @@ const Dashboard: React.FC = () => {
   const renderErrorState = useMemo(() => (
     <div className="text-center py-12" role="alert">
       <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" aria-hidden="true" />
-      <h3 className="mt-2 text-sm font-medium text-gray-900">Error Loading Dashboard</h3>
-      <p className="mt-1 text-sm text-gray-500">{dashboardState.error}</p>
+      <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Error Loading Dashboard</h3>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{dashboardState.error}</p>
       <div className="mt-4 space-x-4">
         <button
           onClick={handleRetry}
           disabled={dashboardState.retryCount >= 3}
-          className="text-sm text-blue-600 hover:text-blue-500 disabled:text-gray-400"
+          className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 disabled:text-gray-400 dark:disabled:text-gray-500"
         >
           {dashboardState.retryCount >= 3 ? 'Max retries reached' : 'Try again'}
         </button>
         <button
           onClick={() => window.location.reload()}
-          className="text-sm text-gray-600 hover:text-gray-500"
+          className="text-sm text-gray-600 hover:text-gray-500 dark:text-gray-400 dark:hover:text-gray-300"
         >
           Refresh page
         </button>
@@ -351,11 +355,26 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Welcome back, {user?.name}! Here's your leave overview.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            Welcome back, {user?.name}! Here's your leave overview.
+          </p>
+        </div>
+        
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleDarkMode}
+          className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? (
+            <SunIcon className="h-5 w-5 text-yellow-500" />
+          ) : (
+            <MoonIcon className="h-5 w-5 text-gray-600" />
+          )}
+        </button>
       </div>
 
       {/* LOP Alert */}
@@ -363,15 +382,15 @@ const Dashboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-yellow-50 border border-yellow-200 rounded-lg p-4"
+          className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4"
           role="alert"
           aria-live="polite"
         >
           <div className="flex">
             <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 mr-3" aria-hidden="true" />
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-yellow-800">LOP Alert</h3>
-              <p className="mt-1 text-sm text-yellow-700">
+              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">LOP Alert</h3>
+              <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
                 You have {dashboardState.lopStatus.yearlyLOP} LOP days this year. Maximum allowed: {dashboardState.lopStatus.maxYearlyLOP} days.
                 {dashboardState.lopStatus.exceedsYearlyLimit && ' You have exceeded the yearly limit!'}
               </p>
@@ -399,9 +418,9 @@ const Dashboard: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="p-4 bg-blue-50 rounded-lg"
+          className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
         >
-          <p className="text-sm text-blue-800">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
             <strong>Carry Forward Balance:</strong> {dashboardState.carryForward} days from previous period
           </p>
         </motion.div>
@@ -413,15 +432,15 @@ const Dashboard: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700"
           >
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-yellow-100">
-                <DocumentTextIcon className="h-6 w-6 text-yellow-600" aria-hidden="true" />
+              <div className="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+                <DocumentTextIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
-                <p className="text-2xl font-bold text-gray-900">0</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Pending Approvals</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">0</p>
               </div>
             </div>
           </motion.div>
@@ -430,15 +449,15 @@ const Dashboard: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700"
           >
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100">
-                <UserGroupIcon className="h-6 w-6 text-blue-600" aria-hidden="true" />
+              <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                <UserGroupIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" aria-hidden="true" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Team on Leave</p>
-                <p className="text-2xl font-bold text-gray-900">0</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Team on Leave</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">0</p>
               </div>
             </div>
           </motion.div>
@@ -447,15 +466,15 @@ const Dashboard: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700"
           >
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100">
-                <ChartBarIcon className="h-6 w-6 text-green-600" aria-hidden="true" />
+              <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
+                <ChartBarIcon className="h-6 w-6 text-green-600 dark:text-green-400" aria-hidden="true" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Leave Utilization</p>
-                <p className="text-2xl font-bold text-gray-900">0%</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Leave Utilization</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">0%</p>
               </div>
             </div>
           </motion.div>
@@ -467,27 +486,27 @@ const Dashboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-lg shadow-sm border border-gray-200"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
           role="region"
           aria-labelledby="recent-leaves-title"
         >
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 id="recent-leaves-title" className="text-lg font-semibold text-gray-900">Recent Leave Applications</h2>
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 id="recent-leaves-title" className="text-lg font-semibold text-gray-900 dark:text-white">Recent Leave Applications</h2>
           </div>
-          <div className="divide-y divide-gray-200" role="list">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700" role="list">
             {dashboardState.recentLeaves.length > 0 ? (
               dashboardState.recentLeaves.map((leave) => (
                 <div 
                   key={leave._id} 
-                  className="px-6 py-4 hover:bg-gray-50"
+                  className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700"
                   role="listitem"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
                         {getLeaveTypeLabel(leave.leaveType)}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
                       </p>
                     </div>
@@ -501,7 +520,7 @@ const Dashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="px-6 py-8 text-center text-sm text-gray-500">
+              <div className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                 No recent leave applications
               </div>
             )}
@@ -512,28 +531,28 @@ const Dashboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-lg shadow-sm border border-gray-200"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
           role="region"
           aria-labelledby="upcoming-holidays-title"
         >
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 id="upcoming-holidays-title" className="text-lg font-semibold text-gray-900">Upcoming Holidays</h2>
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 id="upcoming-holidays-title" className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Holidays</h2>
           </div>
-          <div className="divide-y divide-gray-200" role="list">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700" role="list">
             {dashboardState.upcomingHolidays.length > 0 ? (
               dashboardState.upcomingHolidays.map((holiday) => (
                 <div 
                   key={holiday._id} 
-                  className="px-6 py-4 hover:bg-gray-50"
+                  className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700"
                   role="listitem"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{holiday.name}</p>
-                      <p className="text-sm text-gray-500">{formatDate(holiday.date)}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{holiday.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(holiday.date)}</p>
                     </div>
                     <span 
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
                       role="status"
                     >
                       {holiday.type}
@@ -542,7 +561,7 @@ const Dashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="px-6 py-8 text-center text-sm text-gray-500">
+              <div className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                 No upcoming holidays
               </div>
             )}
