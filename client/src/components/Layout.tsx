@@ -72,7 +72,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'My Leaves', href: '/leaves', icon: CalendarIcon },
-    { name: 'Apply Leave', href: '/apply-leave', icon: PlusIcon },
+    { name: 'Apply Leave', href: '/apply', icon: PlusIcon },
     ...(user?.role === 'manager' || user?.role === 'admin' ? [
       { name: 'Team Leaves', href: '/team', icon: UserGroupIcon },
       { name: 'All Leaves', href: '/all-leaves', icon: DocumentTextIcon },
@@ -91,6 +91,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <AnimatePresence>
         {sidebarOpen && !isDesktop && (
           <motion.div
+            key="sidebar-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

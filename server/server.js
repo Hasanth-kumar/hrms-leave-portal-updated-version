@@ -41,6 +41,10 @@ const { runMigrations } = require('./services/migrationService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Increase header size limit to prevent 431 errors
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 // Trust proxy - required for express-rate-limit when behind a proxy/load balancer
 app.set('trust proxy', 1);
 
@@ -98,8 +102,9 @@ app.use(cors(corsOptions));
 // Handle preflight requests explicitly
 app.options('*', cors(corsOptions));
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Increase body parser limits to handle larger requests
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve static files - only in production, serve React build
 if (process.env.NODE_ENV === 'production') {
