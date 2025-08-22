@@ -245,6 +245,28 @@ const validateLeaveRequest = async (user, leaveData, systemSettings) => {
         return { valid: false, message: 'Leave dates overlap with existing leave request' };
     }
     
+    // Same-day sick leave validation with time cutoff
+    if (leaveType === 'sick') {
+        const now = new Date();
+        const leaveStartDate = new Date(startDate);
+        const isSameDay = now.toDateString() === leaveStartDate.toDateString();
+        
+        if (isSameDay) {
+            const cutoffTime = systemSettings?.sickLeaveCutoffTime || '11:00';
+            const [cutoffHour, cutoffMinute] = cutoffTime.split(':').map(Number);
+            
+            const cutoffDateTime = new Date();
+            cutoffDateTime.setHours(cutoffHour, cutoffMinute, 0, 0);
+            
+            if (now > cutoffDateTime) {
+                return { 
+                    valid: false, 
+                    message: `Same-day sick leave applications must be submitted before ${cutoffTime}. Please contact HR directly for emergency sick leave.` 
+                };
+            }
+        }
+    }
+    
     // Check if applying on weekend or holiday
     if (leaveType !== 'wfh') {
         const startDateObj = new Date(startDate);
@@ -920,6 +942,207 @@ const getTeamLeaves = async (req, res) => {
     }
 };
 
+// Bulk leave operations
+const bulkApproveLeaves = async (req, res) => {
+    try {
+        const currentUser = req.user;
+        const { leaveIds, reason } = req.body;
+
+        if (!currentUser) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Not authenticated' 
+            });
+        }
+
+        if (!['admin', 'manager'].includes(currentUser.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied. Only managers and admins can approve leaves.' 
+            });
+        }
+
+        if (!leaveIds || !Array.isArray(leaveIds) || leaveIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide valid leave IDs'
+            });
+        }
+
+        const results = {
+            successful: [],
+            failed: []
+        };
+
+        // Process each leave individually
+        for (const leaveId of leaveIds) {
+            try {
+                const leave = await Leave.findById(leaveId).populate('userId', 'name email');
+                
+                if (!leave) {
+                    results.failed.push({
+                        leaveId,
+                        error: 'Leave not found'
+                    });
+                    continue;
+                }
+
+                if (leave.status !== 'pending') {
+                    results.failed.push({
+                        leaveId,
+                        error: `Leave is already ${leave.status}`
+                    });
+                    continue;
+                }
+
+                // Update leave
+                leave.status = 'approved';
+                leave.approvedBy = currentUser._id;
+                leave.approvedOn = new Date();
+                
+                await leave.save();
+
+                // Send email notification
+                try {
+                    await sendEmailNotification(leave, 'Approved');
+                } catch (emailError) {
+                    console.error('Email notification failed:', emailError);
+                }
+
+                results.successful.push({
+                    leaveId,
+                    userName: leave.userId.name,
+                    leaveType: leave.leaveType,
+                    startDate: leave.startDate
+                });
+
+            } catch (error) {
+                results.failed.push({
+                    leaveId,
+                    error: error.message || 'Unknown error'
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Bulk approval completed. ${results.successful.length} approved, ${results.failed.length} failed.`,
+            results
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error performing bulk approval',
+            error: error.message
+        });
+    }
+};
+
+const bulkRejectLeaves = async (req, res) => {
+    try {
+        const currentUser = req.user;
+        const { leaveIds, reason } = req.body;
+
+        if (!currentUser) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Not authenticated' 
+            });
+        }
+
+        if (!['admin', 'manager'].includes(currentUser.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied. Only managers and admins can reject leaves.' 
+            });
+        }
+
+        if (!leaveIds || !Array.isArray(leaveIds) || leaveIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide valid leave IDs'
+            });
+        }
+
+        if (!reason || reason.trim().length < 10) {
+            return res.status(400).json({
+                success: false,
+                message: 'Rejection reason is required and must be at least 10 characters'
+            });
+        }
+
+        const results = {
+            successful: [],
+            failed: []
+        };
+
+        // Process each leave individually
+        for (const leaveId of leaveIds) {
+            try {
+                const leave = await Leave.findById(leaveId).populate('userId', 'name email');
+                
+                if (!leave) {
+                    results.failed.push({
+                        leaveId,
+                        error: 'Leave not found'
+                    });
+                    continue;
+                }
+
+                if (leave.status !== 'pending') {
+                    results.failed.push({
+                        leaveId,
+                        error: `Leave is already ${leave.status}`
+                    });
+                    continue;
+                }
+
+                // Update leave
+                leave.status = 'rejected';
+                leave.rejectedBy = currentUser._id;
+                leave.rejectedOn = new Date();
+                leave.rejectionReason = reason.trim();
+                
+                await leave.save();
+
+                // Send email notification
+                try {
+                    await sendEmailNotification(leave, 'Rejected');
+                } catch (emailError) {
+                    console.error('Email notification failed:', emailError);
+                }
+
+                results.successful.push({
+                    leaveId,
+                    userName: leave.userId.name,
+                    leaveType: leave.leaveType,
+                    startDate: leave.startDate
+                });
+
+            } catch (error) {
+                results.failed.push({
+                    leaveId,
+                    error: error.message || 'Unknown error'
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Bulk rejection completed. ${results.successful.length} rejected, ${results.failed.length} failed.`,
+            results
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error performing bulk rejection',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getAllLeaves,
     getMyLeaves,
@@ -933,5 +1156,7 @@ module.exports = {
     addCompOff,
     getHolidays,
     downloadDocument,
-    getTeamLeaves
+    getTeamLeaves,
+    bulkApproveLeaves,
+    bulkRejectLeaves
 }; 

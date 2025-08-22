@@ -10,12 +10,15 @@ import {
   ClockIcon,
   UserIcon,
   ExclamationTriangleIcon,
+  QueueListIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Leave, LeaveStatus, LeaveType, User, ApiResponse, TeamMember } from '../types';
 import { formatDate, getLeaveTypeColor, getLeaveStatusColor, getLeaveTypeLabel } from '../utils';
 import toast from 'react-hot-toast';
+import LeaveCalendar from '../components/LeaveCalendar';
 
 interface LeaveResponse extends ApiResponse<{
   leaves: Leave[];
@@ -48,6 +51,7 @@ const TeamLeaves: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [filteredLeaves, setFilteredLeaves] = useState<Leave[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({
     status: 'all',
@@ -201,11 +205,39 @@ const TeamLeaves: React.FC = () => {
 
   return (
     <div className="space-y-6">
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900">Team Leaves</h1>
-      <p className="mt-1 text-sm text-gray-600">
-        View and manage your team's leave applications
-      </p>
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Team Leaves</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          View and manage your team's leave applications
+        </p>
+      </div>
+      
+      {/* View Toggle */}
+      <div className="flex bg-gray-100 rounded-lg p-1">
+        <button
+          onClick={() => setViewMode('list')}
+          className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            viewMode === 'list'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <QueueListIcon className="h-5 w-5 mr-2" />
+          List View
+        </button>
+        <button
+          onClick={() => setViewMode('calendar')}
+          className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            viewMode === 'calendar'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <CalendarDaysIcon className="h-5 w-5 mr-2" />
+          Calendar View
+        </button>
+      </div>
       </div>
 
       {/* Filters */}
@@ -273,19 +305,25 @@ const TeamLeaves: React.FC = () => {
         </div>
       </div>
 
-      {/* Leaves List */}
-      <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-        {filteredLeaves.length === 0 ? (
-          <div className="text-center py-12" role="status">
-            <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" aria-hidden="true" />
-            <h2 className="mt-2 text-sm font-medium text-gray-900">No leaves found</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {filters.status === 'all' && filters.leaveType === 'all' && filters.dateRange === 'all'
-                ? 'No leave applications from your team members.'
-                : 'Try adjusting your filters.'}
-            </p>
-          </div>
-        ) : (
+      {/* Content based on view mode */}
+      {viewMode === 'calendar' ? (
+        <LeaveCalendar
+          leaves={filteredLeaves}
+          loading={loading}
+        />
+      ) : (
+        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+          {filteredLeaves.length === 0 ? (
+            <div className="text-center py-12" role="status">
+              <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" aria-hidden="true" />
+              <h2 className="mt-2 text-sm font-medium text-gray-900">No leaves found</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {filters.status === 'all' && filters.leaveType === 'all' && filters.dateRange === 'all'
+                  ? 'No leave applications from your team members.'
+                  : 'Try adjusting your filters.'}
+              </p>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200" role="table">
               <thead className="bg-gray-50">
@@ -400,8 +438,9 @@ const TeamLeaves: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Action Modal */}
       <AnimatePresence>

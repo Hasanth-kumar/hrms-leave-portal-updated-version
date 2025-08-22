@@ -1,11 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DocumentArrowDownIcon,
   FunnelIcon,
   ExclamationTriangleIcon,
   ChartBarIcon,
+  ArrowTrendingUpIcon,
+  BuildingOfficeIcon,
+  UserGroupIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Area,
+  AreaChart,
+} from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Department, ApiResponse, LeaveType, LeaveStatus } from '../types';
@@ -20,6 +41,100 @@ interface ReportFilters {
   status: 'all' | LeaveStatus;
 }
 
+interface AnalyticsData {
+  summary: {
+    totalLeaves: number;
+    approvedLeaves: number;
+    pendingLeaves: number;
+    rejectedLeaves: number;
+    cancelledLeaves: number;
+    totalLeaveDays: number;
+    averageLeaveDuration: number;
+  };
+  leavesByType: { [key: string]: any };
+  leavesByMonth: Array<{
+    month: string;
+    monthNumber: number;
+    totalLeaves: number;
+    approvedLeaves: number;
+    pendingLeaves: number;
+    rejectedLeaves: number;
+    totalDays: number;
+  }>;
+  leavesByDepartment: { [key: string]: any };
+  leavesByStatus: { [key: string]: number };
+  topLeaveUsers: Array<{
+    name: string;
+    count: number;
+    totalDays: number;
+    department: string;
+  }>;
+  lopAnalytics: {
+    totalLOPDays: number;
+    usersWithLOP: number;
+    avgLOPPerUser: number;
+  };
+  trends: {
+    comparedToLastYear: {
+      currentYear: number;
+      lastYear: number;
+      changePercent: string;
+    };
+  };
+}
+
+// Colors for charts
+const CHART_COLORS = [
+  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
+  '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
+];
+
+// Chart components
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+        <p className="font-medium text-gray-900">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+const StatCard: React.FC<{
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  color: string;
+  change?: string;
+  changeType?: 'positive' | 'negative' | 'neutral';
+}> = ({ title, value, icon, color, change, changeType }) => (
+  <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
+        {change && (
+          <p className={`text-sm mt-2 ${
+            changeType === 'positive' ? 'text-green-600' : 
+            changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
+          }`}>
+            {change}
+          </p>
+        )}
+      </div>
+      <div className={`p-3 rounded-full ${color} bg-opacity-10`}>
+        {icon}
+      </div>
+    </div>
+  </div>
+);
+
 const Reports: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -27,6 +142,10 @@ const Reports: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [trends, setTrends] = useState<any[]>([]);
+  const [departmentAnalytics, setDepartmentAnalytics] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'departments'>('overview');
   const [filters, setFilters] = useState<ReportFilters>({
     year: new Date().getFullYear(),
     department: 'all',
@@ -75,6 +194,50 @@ const Reports: React.FC = () => {
       mounted = false;
     };
   }, [user, navigate]);
+
+  // Fetch analytics data
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [analyticsResponse, trendsResponse, departmentResponse] = await Promise.all([
+        api.getLeaveAnalytics({
+          year: filters.year,
+          department: filters.department !== 'all' ? filters.department : undefined,
+        }),
+        api.getLeavetrends({
+          period: '12months',
+          leaveType: filters.leaveType !== 'all' ? filters.leaveType : undefined,
+        }),
+        user?.role === 'admin' ? api.getDepartmentAnalytics({ year: filters.year }) : Promise.resolve({ success: true, departmentAnalytics: [] }),
+      ]);
+
+      if (analyticsResponse.success) {
+        setAnalytics((analyticsResponse as any).analytics);
+      }
+
+      if (trendsResponse.success) {
+        setTrends((trendsResponse as any).trends || []);
+      }
+
+      if (departmentResponse.success && user?.role === 'admin') {
+        setDepartmentAnalytics((departmentResponse as any).departmentAnalytics || []);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load analytics';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters.year, filters.department, filters.leaveType, user?.role]);
+
+  useEffect(() => {
+    if (user && (user.role === 'admin' || user.role === 'manager')) {
+      fetchAnalytics();
+    }
+  }, [user, fetchAnalytics]);
 
   const handleFilterChange = (filterName: keyof ReportFilters, value: string | number) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));

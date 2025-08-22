@@ -12,7 +12,7 @@ import ApplyLeave from './pages/ApplyLeave';
 import TeamLeaves from './pages/TeamLeaves';
 import AllLeaves from './pages/AllLeaves';
 import Users from './pages/Users';
-import Reports from './pages/Reports';
+import Reports from './pages/EnhancedReports';
 import Settings from './pages/Settings';
 import Departments from './pages/Departments';
 import './App.css';

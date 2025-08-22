@@ -253,6 +253,42 @@ class ApiService {
     });
     return response.data;
   }
+
+  // Analytics API methods
+  async getLeaveAnalytics(params: {
+    year?: number;
+    department?: string;
+    userId?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/analytics/leaves', { params });
+    return response.data;
+  }
+
+  async getLeavetrends(params: {
+    period?: string;
+    leaveType?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/analytics/trends', { params });
+    return response.data;
+  }
+
+  async getDepartmentAnalytics(params: {
+    year?: number;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/analytics/departments', { params });
+    return response.data;
+  }
+
+  // Bulk operations
+  async bulkApproveLeaves(leaveIds: string[], reason?: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/leaves/bulk-approve', { leaveIds, reason });
+    return response.data;
+  }
+
+  async bulkRejectLeaves(leaveIds: string[], reason: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/leaves/bulk-reject', { leaveIds, reason });
+    return response.data;
+  }
 }
 
 export default new ApiService(); 

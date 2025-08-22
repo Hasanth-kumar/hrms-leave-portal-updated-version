@@ -11,12 +11,16 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ExclamationTriangleIcon,
+  Square2StackIcon,
+  HandThumbUpIcon,
+  HandThumbDownIcon,
 } from '@heroicons/react/24/outline';
 import api from '../services/api';
 import { Leave, LeaveStatus, LeaveType, User, ApiResponse } from '../types';
 import { formatDate, getLeaveTypeColor, getLeaveStatusColor, getLeaveTypeLabel } from '../utils';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import BulkActionsModal from '../components/BulkActionsModal';
 
 // Updated to match actual API response structure
 interface LeaveResponse {
@@ -33,6 +37,8 @@ interface AllLeavesState {
   retryCount: number;
   currentPage: number;
   pageSize: number;
+  selectedLeaves: Set<string>;
+  bulkActionLoading: boolean;
 }
 
 interface FilterState {
@@ -101,7 +107,9 @@ FilterSelect.displayName = 'FilterSelect';
 const LeaveRow: React.FC<{
   leave: Leave;
   onAction: (leaveId: string, action: 'approve' | 'reject') => void;
-}> = React.memo(({ leave, onAction }) => {
+  selected: boolean;
+  onSelect: (leaveId: string, selected: boolean) => void;
+}> = React.memo(({ leave, onAction, selected, onSelect }) => {
   const employee = typeof leave.userId === 'string' ? null : leave.userId;
   
   return (
@@ -110,6 +118,15 @@ const LeaveRow: React.FC<{
       animate={{ opacity: 1 }}
       className="hover:bg-gray-50"
     >
+      <td className="px-6 py-4 whitespace-nowrap">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={(e) => onSelect(leave._id, e.target.checked)}
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          disabled={leave.status !== 'pending'}
+        />
+      </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
           <div className="flex-shrink-0 h-8 w-8">
@@ -260,6 +277,8 @@ const AllLeaves: React.FC = () => {
     retryCount: 0,
     currentPage: 1,
     pageSize: 10,
+    selectedLeaves: new Set<string>(),
+    bulkActionLoading: false,
   });
 
   const [filters, setFilters] = useState<FilterState>({
@@ -425,6 +444,68 @@ const AllLeaves: React.FC = () => {
     setState(prev => ({ ...prev, currentPage: page }));
   }, []);
 
+  // Selection handlers
+  const handleSelectLeave = useCallback((leaveId: string, selected: boolean) => {
+    setState(prev => {
+      const newSelected = new Set(prev.selectedLeaves);
+      if (selected) {
+        newSelected.add(leaveId);
+      } else {
+        newSelected.delete(leaveId);
+      }
+      return { ...prev, selectedLeaves: newSelected };
+    });
+  }, []);
+
+  const handleSelectAll = useCallback((selected: boolean) => {
+    setState(prev => {
+      if (selected) {
+        const pendingLeaveIds = prev.leaves
+          .filter(leave => leave.status === 'pending')
+          .map(leave => leave._id);
+        return { ...prev, selectedLeaves: new Set(pendingLeaveIds) };
+      } else {
+        return { ...prev, selectedLeaves: new Set() };
+      }
+    });
+  }, []);
+
+  // Bulk operations
+  const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | null>(null);
+
+  const handleBulkAction = useCallback(async (action: 'approve' | 'reject', reason?: string) => {
+    try {
+      setState(prev => ({ ...prev, bulkActionLoading: true }));
+      
+      const leaveIds = Array.from(state.selectedLeaves);
+      
+      let response;
+      if (action === 'approve') {
+        response = await api.bulkApproveLeaves(leaveIds);
+      } else {
+        response = await api.bulkRejectLeaves(leaveIds, reason!);
+      }
+
+      if (response.success) {
+        toast.success(response.message || `Successfully ${action}ed selected leaves`);
+        setState(prev => ({ ...prev, selectedLeaves: new Set() }));
+        setBulkAction(null);
+        fetchLeaves(); // Refresh the list
+      } else {
+        throw new Error(response.message || `Failed to ${action} leaves`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `Failed to ${action} leaves`;
+      toast.error(message);
+    } finally {
+      setState(prev => ({ ...prev, bulkActionLoading: false }));
+    }
+  }, [state.selectedLeaves, fetchLeaves]);
+
+  const clearSelection = useCallback(() => {
+    setState(prev => ({ ...prev, selectedLeaves: new Set() }));
+  }, []);
+
   // Initial data fetch
   useEffect(() => {
     fetchLeaves();
@@ -553,10 +634,56 @@ const AllLeaves: React.FC = () => {
           </div>
         ) : (
           <>
+          {/* Bulk Actions Toolbar */}
+          {state.selectedLeaves.size > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-blue-900">
+                    {state.selectedLeaves.size} leave{state.selectedLeaves.size > 1 ? 's' : ''} selected
+                  </span>
+                  <button
+                    onClick={clearSelection}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setBulkAction('approve')}
+                    disabled={state.bulkActionLoading}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <HandThumbUpIcon className="h-4 w-4 mr-2" />
+                    Approve All
+                  </button>
+                  <button
+                    onClick={() => setBulkAction('reject')}
+                    disabled={state.bulkActionLoading}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <HandThumbDownIcon className="h-4 w-4 mr-2" />
+                    Reject All
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={state.selectedLeaves.size > 0 && state.selectedLeaves.size === filteredLeaves.filter(l => l.status === 'pending').length}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      disabled={filteredLeaves.filter(l => l.status === 'pending').length === 0}
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Employee
                   </th>
@@ -574,15 +701,17 @@ const AllLeaves: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedLeaves.map((leave) => (
                     <LeaveRow
                       key={leave._id}
                       leave={leave}
                       onAction={handleLeaveAction}
+                      selected={state.selectedLeaves.has(leave._id)}
+                      onSelect={handleSelectLeave}
                     />
                   ))}
-              </tbody>
+                </tbody>
             </table>
           </div>
             
@@ -596,6 +725,16 @@ const AllLeaves: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Bulk Actions Modal */}
+      <BulkActionsModal
+        isOpen={bulkAction !== null}
+        onClose={() => setBulkAction(null)}
+        action={bulkAction || 'approve'}
+        selectedCount={state.selectedLeaves.size}
+        onConfirm={(reason) => bulkAction && handleBulkAction(bulkAction, reason)}
+        loading={state.bulkActionLoading}
+      />
     </div>
   );
 };

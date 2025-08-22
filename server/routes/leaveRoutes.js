@@ -29,4 +29,8 @@ router.get('/team', authorize('manager', 'admin'), leaveController.getTeamLeaves
 router.get('/pending', authorize('manager', 'admin'), leaveController.getPendingLeaves);
 router.put('/update-status/:leaveId', authorize('manager', 'admin'), leaveController.updateLeaveStatus);
 
+// Bulk operations routes
+router.post('/bulk-approve', authorize('manager', 'admin'), leaveController.bulkApproveLeaves);
+router.post('/bulk-reject', authorize('manager', 'admin'), leaveController.bulkRejectLeaves);
+
 module.exports = router; 
